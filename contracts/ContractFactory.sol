@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.13;
 
+import "./IERC20.sol";
 import "./Contract.sol";
 
 contract ContractFactory {
@@ -13,7 +14,14 @@ contract ContractFactory {
         string contractId
     );
 
-    // ERC20 private token;
+    // Logs out test token sent record
+    event TestTokenSent(address to);
+
+    IERC20 private token;
+
+    // 1 ALZ
+    uint256 maxTokensPerRequest = 1 * 10**6;
+
     address private tokenAddress;
 
     address private immutable owner;
@@ -34,6 +42,7 @@ contract ContractFactory {
     constructor(address _tokenAddress) {
         owner = msg.sender;
         tokenAddress = _tokenAddress;
+        token = IERC20(_tokenAddress);
     }
 
     function addAdmin(address newAdmin) external onlyOwner {
@@ -44,6 +53,15 @@ contract ContractFactory {
 
     function getAdmins() external view onlyOwner returns (address[] memory) {
         return admins;
+    }
+
+    function requestTestToken() external {
+        require(token.balanceOf(address(this)) > maxTokensPerRequest, "Unsufficient balance");
+
+        bool success = token.transfer(msg.sender, maxTokensPerRequest);
+        require(success, "Unable to transfer money");
+
+        emit TestTokenSent(msg.sender);
     }
 
     function createContract(

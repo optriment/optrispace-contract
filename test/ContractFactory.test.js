@@ -10,6 +10,7 @@ describe('ContractFactory', function () {
   let performer
   let other
   let contractFactoryAddress
+  let multiplier
   const price = 42
   const customerId = 'cstmr1'
   const performerId = 'prfrmr1'
@@ -28,14 +29,21 @@ describe('ContractFactory', function () {
 
     tokenAddress = token.address
 
+    const decimals = await token.decimals()
+    multiplier = 10 ** decimals
+
     // Закидываем алмазы на токен
-    const mintTx = await token.connect(owner).mint(tokenAddress, 100500)
+    const mintTx = await token.connect(owner).mint(tokenAddress, 100500 * multiplier)
     await mintTx.wait()
 
     const ContractFactory = await ethers.getContractFactory('ContractFactory')
     contractFactory = await ContractFactory.deploy(tokenAddress)
     const c = await contractFactory.deployed()
     contractFactoryAddress = c.address
+
+    // Закидываем алмазы на фабрику
+    const mintFactoryTx = await token.connect(owner).mint(contractFactoryAddress, 5 * multiplier)
+    await mintFactoryTx.wait()
   })
 
   describe('Deploy', function () {
@@ -313,6 +321,26 @@ describe('ContractFactory', function () {
         const tx = contractFactory.connect(other).getContractById('qwe')
 
         await expectRevert(tx, 'Contract does not exist')
+      })
+    })
+  })
+
+  describe('requestTestToken', function () {
+    describe('sends money', function () {
+      it('Emits event TestTokenSent', async function () {
+        const tx = contractFactory.connect(other).requestTestToken()
+
+        await expectEvent(tx, contractFactory, 'TestTokenSent', [other.address])
+      })
+
+      it('Changes balances', async function () {
+        await contractFactory.connect(other).requestTestToken()
+
+        const b = await token.balanceOf(other.address)
+        expect(b).to.eq(1 * multiplier)
+
+        const c = await token.balanceOf(contractFactoryAddress)
+        expect(c).to.eq(4 * multiplier)
       })
     })
   })
