@@ -1,8 +1,8 @@
 # Optrispace Smart Contracts
 
-2022-05-31 ContractFactory deployed to BNB Test:
+2022-06-07 ContractFactory deployed to BNB Test:
 
-[0xe0B515A3BD4F1f9CE0649eBc414B04e344e62855](https://testnet.bscscan.com/address/0xe0B515A3BD4F1f9CE0649eBc414B04e344e62855)
+[0x2d81444FDc06847CD883877768Aee38Ac134ecFC](https://testnet.bscscan.com/address/0x2d81444FDc06847CD883877768Aee38Ac134ecFC)
 
 Requirements:
 
