@@ -1,13 +1,13 @@
 const { ethers } = require('hardhat')
 
-const { BSC_TN_ALMAZ_ADDRESS, ACCOUNT_ALMAZ, ACCOUNT_CHAD, ACCOUNT_EVA } = require('./const')
+const { ACCOUNT_ALMAZ, ACCOUNT_CHAD, ACCOUNT_EVA } = require('./const')
 
 async function main() {
   const [owner] = await ethers.getSigners()
   console.log('Script running with owner', owner.address)
 
   const ContractFactory = await ethers.getContractFactory('ContractFactory')
-  const contractFactory = await ContractFactory.deploy(BSC_TN_ALMAZ_ADDRESS)
+  const contractFactory = await ContractFactory.deploy()
 
   await contractFactory.deployed()
 

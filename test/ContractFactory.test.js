@@ -10,40 +10,20 @@ describe('ContractFactory', function () {
   let performer
   let other
   let contractFactoryAddress
-  let multiplier
-  const price = 42
+  const price = 42.12
+  const priceInGwei = ethers.utils.parseEther(price.toString())
   const customerId = 'cstmr1'
   const performerId = 'prfrmr1'
   const title = 'title'
   const description = 'description'
 
-  let token
-  let tokenAddress
-
   beforeEach(async function () {
     ;[owner, customer, performer, other] = await ethers.getSigners()
 
-    const Token = await ethers.getContractFactory('Almaz')
-    token = await Token.connect(owner).deploy()
-    await token.deployed()
-
-    tokenAddress = token.address
-
-    const decimals = await token.decimals()
-    multiplier = 10 ** decimals
-
-    // Закидываем алмазы на токен
-    const mintTx = await token.connect(owner).mint(tokenAddress, 100500 * multiplier)
-    await mintTx.wait()
-
     const ContractFactory = await ethers.getContractFactory('ContractFactory')
-    contractFactory = await ContractFactory.deploy(tokenAddress)
+    contractFactory = await ContractFactory.deploy()
     const c = await contractFactory.deployed()
     contractFactoryAddress = c.address
-
-    // Закидываем алмазы на фабрику
-    const mintFactoryTx = await token.connect(owner).mint(contractFactoryAddress, 5 * multiplier)
-    await mintFactoryTx.wait()
   })
 
   describe('Deploy', function () {
@@ -59,7 +39,7 @@ describe('ContractFactory', function () {
     it('Reverts when customer == performer', async function () {
       const tx = contractFactory
         .connect(customer)
-        .createContract(contractId, customer.address, price, customerId, performerId, title, description)
+        .createContract(contractId, customer.address, priceInGwei, customerId, performerId, title, description)
 
       await expectRevert(tx, 'Customer is equal to performer')
     })
@@ -67,7 +47,7 @@ describe('ContractFactory', function () {
     it('Reverts when ContractID is empty', async function () {
       const tx = contractFactory
         .connect(customer)
-        .createContract('', performer.address, price, customerId, performerId, title, description)
+        .createContract('', performer.address, priceInGwei, customerId, performerId, title, description)
 
       await expectRevert(tx, 'ContractID cannot be empty')
     })
@@ -75,12 +55,12 @@ describe('ContractFactory', function () {
     it('Reverts when contract already exists', async function () {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, performer.address, price, customerId, performerId, title, description)
+        .createContract(contractId, performer.address, priceInGwei, customerId, performerId, title, description)
       await createContractTx.wait()
 
       const tx = contractFactory
         .connect(customer)
-        .createContract(contractId, performer.address, price, customerId, performerId, title, description)
+        .createContract(contractId, performer.address, priceInGwei, customerId, performerId, title, description)
 
       await expectRevert(tx, 'Contract already exists')
     })
@@ -93,22 +73,22 @@ describe('ContractFactory', function () {
       await expectRevert(tx, 'Price must be greater than zero')
     })
 
-    it('Emits event ContractCreated', async function () {
+    it('Emits event ContractDeployed', async function () {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, performer.address, price, customerId, performerId, title, description)
+        .createContract(contractId, performer.address, priceInGwei, customerId, performerId, title, description)
 
       await createContractTx.wait()
 
       const [contractAddress] = await contractFactory.connect(customer).getContractById(contractId)
 
-      await expectEvent(createContractTx, contractFactory, 'ContractCreated', [contractAddress, contractId])
+      await expectEvent(createContractTx, contractFactory, 'ContractDeployed', [contractAddress, contractId])
     })
 
     it('Creates contract', async function () {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, performer.address, price, customerId, performerId, title, description)
+        .createContract(contractId, performer.address, priceInGwei, customerId, performerId, title, description)
       await createContractTx.wait()
 
       const [
@@ -129,7 +109,7 @@ describe('ContractFactory', function () {
       expect(contractCustomer).to.eq(customer.address)
       expect(contractPerformer).to.eq(performer.address)
       expect(contractContractId).to.eq(contractId)
-      expect(contractPrice).to.eq(price)
+      expect(contractPrice).to.eq(priceInGwei)
       expect(contractCustomerId).to.eq(customerId)
       expect(contractPerformerId).to.eq(performerId)
       expect(contractTitle).to.eq(title)
@@ -182,23 +162,17 @@ describe('ContractFactory', function () {
 
   describe('getContractById', function () {
     beforeEach(async () => {
-      const mintTx = await token.connect(owner).mint(customer.address, 1000)
-      await mintTx.wait()
-
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, performer.address, price, customerId, performerId, title, description)
+        .createContract(contractId, performer.address, priceInGwei, customerId, performerId, title, description)
       await createContractTx.wait()
 
       const [contractAddress] = await contractFactory.getContractById(contractId)
 
-      const approveTx = await token.connect(customer).approve(contractAddress, price)
-      await approveTx.wait()
-
       const Contract = await ethers.getContractFactory('Contract')
       const contract = Contract.attach(contractAddress)
 
-      const fundTx = await contract.connect(customer).fund()
+      const fundTx = await contract.connect(customer).fund({ value: priceInGwei })
       await fundTx.wait()
     })
 
@@ -226,11 +200,11 @@ describe('ContractFactory', function () {
         ] = await contractFactory.connect(owner).getContractById(contractId)
 
         expect(contractAddress).not.to.eq('')
-        expect(contractBalance).to.eq(price)
+        expect(contractBalance).to.eq(priceInGwei)
         expect(contractCustomer).to.eq(customer.address)
         expect(contractPerformer).to.eq(performer.address)
         expect(contractContractId).to.eq(contractId)
-        expect(contractPrice).to.eq(price)
+        expect(contractPrice).to.eq(priceInGwei)
         expect(contractCustomerId).to.eq(customerId)
         expect(contractPerformerId).to.eq(performerId)
         expect(contractTitle).to.eq(title)
@@ -262,11 +236,11 @@ describe('ContractFactory', function () {
         ] = await contractFactory.connect(customer).getContractById(contractId)
 
         expect(contractAddress).not.to.eq('')
-        expect(contractBalance).to.eq(price)
+        expect(contractBalance).to.eq(priceInGwei)
         expect(contractCustomer).to.eq(customer.address)
         expect(contractPerformer).to.eq(performer.address)
         expect(contractContractId).to.eq(contractId)
-        expect(contractPrice).to.eq(price)
+        expect(contractPrice).to.eq(priceInGwei)
         expect(contractCustomerId).to.eq(customerId)
         expect(contractPerformerId).to.eq(performerId)
         expect(contractTitle).to.eq(title)
@@ -298,11 +272,11 @@ describe('ContractFactory', function () {
         ] = await contractFactory.connect(performer).getContractById(contractId)
 
         expect(contractAddress).not.to.eq('')
-        expect(contractBalance).to.eq(price)
+        expect(contractBalance).to.eq(priceInGwei)
         expect(contractCustomer).to.eq(customer.address)
         expect(contractPerformer).to.eq(performer.address)
         expect(contractContractId).to.eq(contractId)
-        expect(contractPrice).to.eq(price)
+        expect(contractPrice).to.eq(priceInGwei)
         expect(contractCustomerId).to.eq(customerId)
         expect(contractPerformerId).to.eq(performerId)
         expect(contractTitle).to.eq(title)
@@ -321,26 +295,6 @@ describe('ContractFactory', function () {
         const tx = contractFactory.connect(other).getContractById('qwe')
 
         await expectRevert(tx, 'Contract does not exist')
-      })
-    })
-  })
-
-  describe('requestTestToken', function () {
-    describe('sends money', function () {
-      it('Emits event TestTokenSent', async function () {
-        const tx = contractFactory.connect(other).requestTestToken()
-
-        await expectEvent(tx, contractFactory, 'TestTokenSent', [other.address])
-      })
-
-      it('Changes balances', async function () {
-        await contractFactory.connect(other).requestTestToken()
-
-        const b = await token.balanceOf(other.address)
-        expect(b).to.eq(1 * multiplier)
-
-        const c = await token.balanceOf(contractFactoryAddress)
-        expect(c).to.eq(4 * multiplier)
       })
     })
   })

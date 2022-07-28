@@ -6,7 +6,9 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "flatten": "npx hardhat flatten ./contracts/ContractFactory.sol",
-    "testnet-deploy": "npx hardhat run scripts/deploy.js --network testnet",
+    "deploy-localhost": "npx hardhat run scripts/deploy.js --network localhost",
+    "deploy-bsc-testnet": "npx hardhat run scripts/deploy.js --network bsc-testnet",
+    "deploy-mumbai-testnet": "npx hardhat run scripts/deploy.js --network mumbai-testnet",
     "test": "hardhat test test/*.test.js --bail",
     "coverage": "hardhat coverage --temp build --testfiles 'test/*.test.js'",
     "lint": "npm run lint:es && npm run lint:js && npm run lint:sol",

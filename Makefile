@@ -28,3 +28,6 @@ coverage: # Generate code coverage
 
 open_coverage:
 	open ./coverage/index.html
+
+run_node:
+	@npx hardhat node
