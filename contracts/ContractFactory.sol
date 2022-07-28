@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.13;
 
-import "./IERC20.sol";
 import "./Contract.sol";
 
 contract ContractFactory {
@@ -9,20 +8,10 @@ contract ContractFactory {
     event AdminAdded(address newAdmin);
 
     // Logs out created contract record
-    event ContractCreated(
+    event ContractDeployed(
         address contractAddress,
         string contractId
     );
-
-    // Logs out test token sent record
-    event TestTokenSent(address to);
-
-    IERC20 private token;
-
-    // 1 ALZ
-    uint256 maxTokensPerRequest = 1 * 10**6;
-
-    address private tokenAddress;
 
     address private immutable owner;
 
@@ -39,10 +28,8 @@ contract ContractFactory {
         _;
     }
 
-    constructor(address _tokenAddress) {
+    constructor() {
         owner = msg.sender;
-        tokenAddress = _tokenAddress;
-        token = IERC20(_tokenAddress);
     }
 
     function addAdmin(address newAdmin) external onlyOwner {
@@ -53,15 +40,6 @@ contract ContractFactory {
 
     function getAdmins() external view onlyOwner returns (address[] memory) {
         return admins;
-    }
-
-    function requestTestToken() external {
-        require(token.balanceOf(address(this)) > maxTokensPerRequest, "Unsufficient balance");
-
-        bool success = token.transfer(msg.sender, maxTokensPerRequest);
-        require(success, "Unable to transfer money");
-
-        emit TestTokenSent(msg.sender);
     }
 
     function createContract(
@@ -77,7 +55,6 @@ contract ContractFactory {
         require(!contractExists[contractId], "Contract already exists");
 
         Contract c = new Contract(
-            tokenAddress,
             contractId,
             msg.sender, // customer
             performer,
@@ -91,7 +68,7 @@ contract ContractFactory {
         contracts[contractId] = c;
         contractExists[contractId] = true;
 
-        emit ContractCreated(address(c), contractId);
+        emit ContractDeployed(address(c), contractId);
 
         return address(c);
     }

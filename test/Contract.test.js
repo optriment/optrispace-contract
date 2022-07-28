@@ -10,55 +10,35 @@ describe('Contract', function () {
   let customer
   let performer
   let other
-  let multiplier
   const price = 42.12
+  const priceInGwei = ethers.utils.parseEther(price.toString())
   const customerId = 'cstmr1'
   const performerId = 'prfrmr1'
   const title = 'title'
   const description = 'description'
 
-  let token
-  let tokenAddress
-
   beforeEach(async function () {
     ;[owner, customer, performer, other] = await ethers.getSigners()
-
-    const Token = await ethers.getContractFactory('Almaz')
-    token = await Token.connect(owner).deploy()
-    await token.deployed()
-
-    tokenAddress = token.address
-
-    const decimals = await token.decimals()
-    multiplier = 10 ** decimals
-
-    // Закидываем алмазы на токен
-    const mintTx = await token.connect(owner).mint(tokenAddress, 100500)
-    await mintTx.wait()
-
-    expect(await token.balanceOf(tokenAddress)).to.eq(100500)
 
     Contract = await ethers.getContractFactory('Contract')
   })
 
   const deployContract = async (
-    _tokenAddress,
     _signer,
     _contractId,
     _customerAddress,
     _performerAddress,
-    _price,
+    _priceInEth,
     _customerId,
     _performerId,
     _title,
     _description
   ) => {
     contract = await Contract.connect(_signer).deploy(
-      _tokenAddress,
       _contractId,
       _customerAddress,
       _performerAddress,
-      _price * multiplier,
+      ethers.utils.parseEther(_priceInEth.toString()),
       _customerId,
       _performerId,
       _title,
@@ -68,22 +48,8 @@ describe('Contract', function () {
     return await contract.deployed()
   }
 
-  const mintTokensTo = async (_address, _amount) => {
-    const tx = await token.connect(owner).mint(_address, _amount * multiplier)
-    await tx.wait()
-
-    return tx
-  }
-
-  const approveTokensTransfer = async (_signer, _addressTo, _amount) => {
-    const tx = await token.connect(_signer).approve(_addressTo, _amount * multiplier)
-    await tx.wait()
-
-    return tx
-  }
-
-  const fundContractAs = async (_signer) => {
-    const tx = await contract.connect(_signer).fund()
+  const fundContractAs = async (_signer, _amountInEth) => {
+    const tx = await contract.connect(_signer).fund({ value: ethers.utils.parseEther(_amountInEth.toString()) })
     await tx.wait()
 
     return tx
@@ -96,8 +62,8 @@ describe('Contract', function () {
     return tx
   }
 
-  const requestMoneyFromTokenAs = async (_signer, _addressTo, _amount) => {
-    const tx = await token.connect(_signer).transferFrom(contract.address, _addressTo, _amount * multiplier)
+  const withdrawTokensAs = async (_signer) => {
+    const tx = await contract.connect(_signer).withdraw()
     await tx.wait()
 
     return tx
@@ -107,7 +73,6 @@ describe('Contract', function () {
     describe('Deploy', function () {
       it('Reverts when owner == customer', async function () {
         const tx = deployContract(
-          tokenAddress,
           owner,
           contractId,
           owner.address,
@@ -124,7 +89,6 @@ describe('Contract', function () {
 
       it('Reverts when owner == performer', async function () {
         const tx = deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -141,7 +105,6 @@ describe('Contract', function () {
 
       it('Reverts when customer == performer', async function () {
         const tx = deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -158,7 +121,6 @@ describe('Contract', function () {
 
       it('Reverts when price == 0', async function () {
         const tx = deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -175,7 +137,6 @@ describe('Contract', function () {
 
       it('Deploys successfully', async function () {
         const c = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -201,7 +162,6 @@ describe('Contract', function () {
     describe('fund', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -215,14 +175,13 @@ describe('Contract', function () {
       })
 
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(fundContractAs(owner), 'Available to customer only')
+        await expectRevert(fundContractAs(owner, price), 'Available to customer only')
       })
     })
 
     describe('approve', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -243,7 +202,6 @@ describe('Contract', function () {
     describe('getters', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -265,9 +223,7 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns true', async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
 
             expect(await contract.connect(owner).isFunded()).to.eq(true)
           })
@@ -283,9 +239,7 @@ describe('Contract', function () {
 
         describe('when contract is approved', function () {
           it('Returns true', async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
             await approveContractAs(customer)
 
             expect(await contract.connect(owner).isApproved()).to.eq(true)
@@ -293,81 +247,97 @@ describe('Contract', function () {
         })
       })
 
+      describe('isClosed', function () {
+        describe('when contract not closed', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(owner).isClosed()).to.eq(false)
+          })
+        })
+
+        describe('when contract is closed', function () {
+          it('Returns true', async function () {
+            await fundContractAs(customer, price)
+            await approveContractAs(customer)
+            await withdrawTokensAs(performer)
+
+            expect(await contract.connect(owner).isClosed()).to.eq(true)
+          })
+        })
+      })
+
       describe('getBalance', function () {
         describe('when not funded', function () {
           it('Returns zero', async function () {
-            const expected = await contract.connect(owner).getBalance()
-            expect(expected).to.eq(0)
+            const result = await contract.connect(owner).getBalance()
+            expect(result).to.eq(0)
           })
         })
 
         describe('when funded', function () {
           beforeEach(async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
           })
 
           it('Returns contract balance', async function () {
-            const expected = await contract.connect(owner).getBalance()
-            expect(expected).to.eq(price * multiplier)
+            const result = await contract.connect(owner).getBalance()
+            expect(result).to.eq(priceInGwei)
           })
         })
       })
 
       describe('getCustomer', function () {
         it('Returns customer address', async function () {
-          const expected = await contract.connect(owner).getCustomer()
-          expect(expected).to.eq(customer.address)
+          const result = await contract.connect(owner).getCustomer()
+          expect(result).to.eq(customer.address)
         })
       })
 
       describe('getPerformer', function () {
         it('Returns performer address', async function () {
-          const expected = await contract.connect(owner).getPerformer()
-          expect(expected).to.eq(performer.address)
+          const result = await contract.connect(owner).getPerformer()
+          expect(result).to.eq(performer.address)
         })
       })
 
       describe('getContractId', function () {
         it('Returns contract ID', async function () {
-          const expected = await contract.connect(owner).getContractId()
-          expect(expected).to.eq(contractId)
+          const result = await contract.connect(owner).getContractId()
+          expect(result).to.eq(contractId)
         })
       })
 
       describe('getPrice', function () {
         it('Returns contract price', async function () {
-          const expected = await contract.connect(owner).getPrice()
-          expect(expected).to.eq(price * multiplier)
+          const result = await contract.connect(owner).getPrice()
+          expect(result).to.eq(priceInGwei)
         })
       })
 
       describe('getCustomerId', function () {
         it('Returns contract customerId', async function () {
-          const expected = await contract.connect(owner).getCustomerId()
-          expect(expected).to.eq(customerId)
+          const result = await contract.connect(owner).getCustomerId()
+          expect(result).to.eq(customerId)
         })
       })
 
       describe('getPerformerId', function () {
         it('Returns contract performerId', async function () {
-          const expected = await contract.connect(owner).getPerformerId()
-          expect(expected).to.eq(performerId)
+          const result = await contract.connect(owner).getPerformerId()
+          expect(result).to.eq(performerId)
         })
       })
 
       describe('getTitle', function () {
         it('Returns contract title', async function () {
-          const expected = await contract.connect(owner).getTitle()
-          expect(expected).to.eq(title)
+          const result = await contract.connect(owner).getTitle()
+          expect(result).to.eq(title)
         })
       })
 
       describe('getDescription', function () {
         it('Returns contract description', async function () {
-          const expected = await contract.connect(owner).getDescription()
-          expect(expected).to.eq(description)
+          const result = await contract.connect(owner).getDescription()
+          expect(result).to.eq(description)
         })
       })
     })
@@ -377,7 +347,6 @@ describe('Contract', function () {
     describe('Deploy', function () {
       it('Reverts because restricted to owner', async function () {
         const tx = deployContract(
-          tokenAddress,
           customer,
           contractId,
           customer.address,
@@ -395,60 +364,8 @@ describe('Contract', function () {
     })
 
     describe('fund', function () {
-      describe('when tokens transfer is not approved', function () {
-        beforeEach(async function () {
-          contract = await deployContract(
-            tokenAddress,
-            owner,
-            contractId,
-            customer.address,
-            performer.address,
-            price,
-            customerId,
-            performerId,
-            title,
-            description,
-            price
-          )
-
-          await mintTokensTo(customer.address, price)
-        })
-
-        it('Reverts because of insufficient allowance', async function () {
-          await expectRevert(fundContractAs(customer), 'ERC20: insufficient allowance')
-        })
-      })
-
-      describe('when tokens transfer approved', function () {
-        beforeEach(async function () {
-          contract = await deployContract(
-            tokenAddress,
-            owner,
-            contractId,
-            customer.address,
-            performer.address,
-            price,
-            customerId,
-            performerId,
-            title,
-            description,
-            price
-          )
-
-          await mintTokensTo(customer.address, price)
-          await approveTokensTransfer(customer, contract.address, price)
-        })
-
-        it('Emits event ContractFunded', async function () {
-          await expectEvent(fundContractAs(customer), contract, 'ContractFunded', [contractId, price * multiplier])
-        })
-      })
-    })
-
-    describe('approve', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -460,9 +377,27 @@ describe('Contract', function () {
           description,
           price
         )
+      })
 
-        await mintTokensTo(customer.address, price)
-        await approveTokensTransfer(customer, contract.address, price)
+      it('Emits event ContractFunded', async function () {
+        await expectEvent(fundContractAs(customer, price), contract, 'ContractFunded', [contractId, priceInGwei])
+      })
+    })
+
+    describe('approve', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          performer.address,
+          price,
+          customerId,
+          performerId,
+          title,
+          description,
+          price
+        )
       })
 
       describe('when not funded', async function () {
@@ -472,7 +407,7 @@ describe('Contract', function () {
       })
 
       it('Emits event ContractApproved', async function () {
-        await fundContractAs(customer)
+        await fundContractAs(customer, price)
 
         await expectEvent(approveContractAs(customer), contract, 'ContractApproved', [contractId])
       })
@@ -481,7 +416,6 @@ describe('Contract', function () {
     describe('getters', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -504,9 +438,7 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns true', async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
 
             expect(await contract.connect(customer).isFunded()).to.eq(true)
           })
@@ -522,9 +454,7 @@ describe('Contract', function () {
 
         describe('when contract is approved', function () {
           it('Returns true', async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
             await approveContractAs(customer)
 
             expect(await contract.connect(customer).isApproved()).to.eq(true)
@@ -532,83 +462,95 @@ describe('Contract', function () {
         })
       })
 
+      describe('isClosed', function () {
+        describe('when contract not closed', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(customer).isClosed()).to.eq(false)
+          })
+        })
+
+        describe('when contract is closed', function () {
+          it('Returns true', async function () {
+            await fundContractAs(customer, price)
+            await approveContractAs(customer)
+            await withdrawTokensAs(performer)
+
+            expect(await contract.connect(customer).isClosed()).to.eq(true)
+          })
+        })
+      })
+
       describe('getBalance', function () {
         describe('when contract is not funded', function () {
           it('Returns zero', async function () {
-            const expected = await contract.connect(customer).getBalance()
-            expect(expected).to.eq(0)
+            const result = await contract.connect(customer).getBalance()
+            expect(result).to.eq(0)
           })
         })
 
         describe('when contract is funded', function () {
-          beforeEach(async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-
-            const tx = await contract.connect(customer).fund()
-            await tx.wait()
-          })
-
           it('Returns contract balance', async function () {
-            const expected = await contract.connect(customer).getBalance()
-            expect(expected).to.eq(price * multiplier)
+            await fundContractAs(customer, price)
+
+            const result = await contract.connect(customer).getBalance()
+            expect(result).to.eq(priceInGwei)
           })
         })
       })
 
       describe('getCustomer', function () {
         it('Returns customer address', async function () {
-          const expected = await contract.connect(customer).getCustomer()
-          expect(expected).to.eq(customer.address)
+          const result = await contract.connect(customer).getCustomer()
+          expect(result).to.eq(customer.address)
         })
       })
 
       describe('getPerformer', function () {
         it('Returns performer address', async function () {
-          const expected = await contract.connect(customer).getPerformer()
-          expect(expected).to.eq(performer.address)
+          const result = await contract.connect(customer).getPerformer()
+          expect(result).to.eq(performer.address)
         })
       })
 
       describe('getContractId', function () {
         it('Returns contract ID', async function () {
-          const expected = await contract.connect(customer).getContractId()
-          expect(expected).to.eq(contractId)
+          const result = await contract.connect(customer).getContractId()
+          expect(result).to.eq(contractId)
         })
       })
 
       describe('getPrice', function () {
         it('Returns contract price', async function () {
-          const expected = await contract.connect(customer).getPrice()
-          expect(expected).to.eq(price * multiplier)
+          const result = await contract.connect(customer).getPrice()
+          expect(result).to.eq(priceInGwei)
         })
       })
 
       describe('getCustomerId', function () {
         it('Returns contract customerId', async function () {
-          const expected = await contract.connect(customer).getCustomerId()
-          expect(expected).to.eq(customerId)
+          const result = await contract.connect(customer).getCustomerId()
+          expect(result).to.eq(customerId)
         })
       })
 
       describe('getPerformerId', function () {
         it('Returns contract performerId', async function () {
-          const expected = await contract.connect(customer).getPerformerId()
-          expect(expected).to.eq(performerId)
+          const result = await contract.connect(customer).getPerformerId()
+          expect(result).to.eq(performerId)
         })
       })
 
       describe('getTitle', function () {
         it('Returns contract title', async function () {
-          const expected = await contract.connect(customer).getTitle()
-          expect(expected).to.eq(title)
+          const result = await contract.connect(customer).getTitle()
+          expect(result).to.eq(title)
         })
       })
 
       describe('getDescription', function () {
         it('Returns contract description', async function () {
-          const expected = await contract.connect(customer).getDescription()
-          expect(expected).to.eq(description)
+          const result = await contract.connect(customer).getDescription()
+          expect(result).to.eq(description)
         })
       })
     })
@@ -618,7 +560,6 @@ describe('Contract', function () {
     describe('Deploy', function () {
       it('Reverts because restricted to owner', async function () {
         const tx = deployContract(
-          tokenAddress,
           performer,
           contractId,
           customer.address,
@@ -637,7 +578,6 @@ describe('Contract', function () {
     describe('fund', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -658,7 +598,6 @@ describe('Contract', function () {
     describe('approve', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -679,7 +618,6 @@ describe('Contract', function () {
     describe('withdraw money from token', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -693,36 +631,35 @@ describe('Contract', function () {
       })
 
       it('Reverts because contract is not approved', async function () {
-        await mintTokensTo(customer.address, price)
-        await approveTokensTransfer(customer, contract.address, price)
-        await fundContractAs(customer)
+        await fundContractAs(customer, price)
 
-        await expectRevert(
-          requestMoneyFromTokenAs(performer, performer.address, price),
-          'ERC20: insufficient allowance'
-        )
+        await expectRevert(withdrawTokensAs(performer), '')
       })
 
       it('Transfers money from contract to performer', async function () {
-        await mintTokensTo(customer.address, price)
-        await approveTokensTransfer(customer, contract.address, price)
-        await fundContractAs(customer)
+        await fundContractAs(customer, price)
         await approveContractAs(customer)
 
-        expect(await token.balanceOf(contract.address)).to.eq(price * multiplier)
-        expect(await token.balanceOf(performer.address)).to.eq(0)
+        expect(await ethers.provider.getBalance(contract.address)).to.eq(priceInGwei)
+        const performerBalanceBefore = await ethers.provider.getBalance(performer.address)
+        const performerBalanceBeforeInEth = ethers.utils.formatEther(performerBalanceBefore.toString())
 
-        await requestMoneyFromTokenAs(performer, performer.address, price)
+        await withdrawTokensAs(performer)
 
-        expect(await token.balanceOf(contract.address)).to.eq(0)
-        expect(await token.balanceOf(performer.address)).to.eq(price * multiplier)
+        expect(await ethers.provider.getBalance(contract.address)).to.eq(0)
+
+        // NOTE: We should check not exact value, because of gas fee
+        const performerBalanceAfter = await ethers.provider.getBalance(performer.address)
+        const performerBalanceAfterInEth = ethers.utils.formatEther(performerBalanceAfter.toString())
+        const diff = performerBalanceAfterInEth - performerBalanceBeforeInEth
+
+        expect(diff).to.be.gt(parseFloat(price) - 2)
       })
     })
 
     describe('getters', function () {
       beforeEach(async function () {
         contract = await deployContract(
-          tokenAddress,
           owner,
           contractId,
           customer.address,
@@ -744,9 +681,7 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns true', async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
 
             expect(await contract.connect(performer).isFunded()).to.eq(true)
           })
@@ -762,9 +697,7 @@ describe('Contract', function () {
 
         describe('when contract is approved', function () {
           it('Returns true', async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-            await fundContractAs(customer)
+            await fundContractAs(customer, price)
             await approveContractAs(customer)
 
             expect(await contract.connect(performer).isApproved()).to.eq(true)
@@ -772,83 +705,95 @@ describe('Contract', function () {
         })
       })
 
+      describe('isClosed', function () {
+        describe('when contract not closed', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(performer).isClosed()).to.eq(false)
+          })
+        })
+
+        describe('when contract is closed', function () {
+          it('Returns true', async function () {
+            await fundContractAs(customer, price)
+            await approveContractAs(customer)
+            await withdrawTokensAs(performer)
+
+            expect(await contract.connect(performer).isClosed()).to.eq(true)
+          })
+        })
+      })
+
       describe('getBalance', function () {
         describe('when contract is not funded', function () {
           it('Returns zero', async function () {
-            const expected = await contract.connect(performer).getBalance()
-            expect(expected).to.eq(0)
+            const result = await contract.connect(performer).getBalance()
+            expect(result).to.eq(0)
           })
         })
 
         describe('when contract is funded', function () {
-          beforeEach(async function () {
-            await mintTokensTo(customer.address, price)
-            await approveTokensTransfer(customer, contract.address, price)
-
-            const tx = await contract.connect(customer).fund()
-            await tx.wait()
-          })
-
           it('Returns contract balance', async function () {
-            const expected = await contract.connect(performer).getBalance()
-            expect(expected).to.eq(price * multiplier)
+            await fundContractAs(customer, price)
+
+            const result = await contract.connect(performer).getBalance()
+            expect(result).to.eq(priceInGwei)
           })
         })
       })
 
       describe('getCustomer', function () {
         it('Returns customer address', async function () {
-          const expected = await contract.connect(performer).getCustomer()
-          expect(expected).to.eq(customer.address)
+          const result = await contract.connect(performer).getCustomer()
+          expect(result).to.eq(customer.address)
         })
       })
 
       describe('getPerformer', function () {
         it('Returns performer address', async function () {
-          const expected = await contract.connect(performer).getPerformer()
-          expect(expected).to.eq(performer.address)
+          const result = await contract.connect(performer).getPerformer()
+          expect(result).to.eq(performer.address)
         })
       })
 
       describe('getContractId', function () {
         it('Returns contract ID', async function () {
-          const expected = await contract.connect(performer).getContractId()
-          expect(expected).to.eq(contractId)
+          const result = await contract.connect(performer).getContractId()
+          expect(result).to.eq(contractId)
         })
       })
 
       describe('getPrice', function () {
         it('Returns contract price', async function () {
-          const expected = await contract.connect(performer).getPrice()
-          expect(expected).to.eq(price * multiplier)
+          const result = await contract.connect(performer).getPrice()
+          expect(result).to.eq(priceInGwei)
         })
       })
 
       describe('getCustomerId', function () {
         it('Returns contract customerId', async function () {
-          const expected = await contract.connect(performer).getCustomerId()
-          expect(expected).to.eq(customerId)
+          const result = await contract.connect(performer).getCustomerId()
+          expect(result).to.eq(customerId)
         })
       })
 
       describe('getPerformerId', function () {
         it('Returns contract performerId', async function () {
-          const expected = await contract.connect(performer).getPerformerId()
-          expect(expected).to.eq(performerId)
+          const result = await contract.connect(performer).getPerformerId()
+          expect(result).to.eq(performerId)
         })
       })
 
       describe('getTitle', function () {
         it('Returns contract title', async function () {
-          const expected = await contract.connect(performer).getTitle()
-          expect(expected).to.eq(title)
+          const result = await contract.connect(performer).getTitle()
+          expect(result).to.eq(title)
         })
       })
 
       describe('getDescription', function () {
         it('Returns contract description', async function () {
-          const expected = await contract.connect(performer).getDescription()
-          expect(expected).to.eq(description)
+          const result = await contract.connect(performer).getDescription()
+          expect(result).to.eq(description)
         })
       })
     })
@@ -857,7 +802,6 @@ describe('Contract', function () {
   describe('As other', function () {
     beforeEach(async function () {
       contract = await deployContract(
-        tokenAddress,
         owner,
         contractId,
         customer.address,
@@ -891,6 +835,12 @@ describe('Contract', function () {
     describe('isApproved', function () {
       it('Reverts because restricted to participants', async function () {
         await expectRevert(contract.connect(other).isApproved(), 'Authorized only')
+      })
+    })
+
+    describe('isClosed', function () {
+      it('Reverts because restricted to participants', async function () {
+        await expectRevert(contract.connect(other).isClosed(), 'Authorized only')
       })
     })
 
