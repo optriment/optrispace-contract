@@ -1,6 +1,6 @@
 # Contributing to OptriSpace Smart Contracts
 
-The development branch is `master`.\
+The development branch is `develop`.\
 This is the default branch that all Pull Requests (PR) should be made against.
 
 Requirements:
