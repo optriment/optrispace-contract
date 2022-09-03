@@ -1,9 +1,9 @@
-name: Lint Solidity
+name: Lint
 
 on: [push, pull_request]
 
 jobs:
-  lint-sol:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -16,4 +16,4 @@ jobs:
       - name: Install dependencies and build
         run: npm ci
 
-      - run: npm run lint:sol
+      - run: make lint
