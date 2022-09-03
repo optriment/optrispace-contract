@@ -26,7 +26,7 @@ Please follow instructions below to install Smart Contracts locally.
 4. Install the dependencies with:
 
     ```sh
-    npm install
+    make setup
     ```
 
 5. Copy the environment variables:

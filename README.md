@@ -27,7 +27,12 @@ Please see our [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 Owner: `0xE5a26Cc0eC6F20f20B793262e6eB16fe1eDbe2d8`
 
-Latest versions of the contracts:
+Current versions of the contracts:
 
-* [Binance Smart Chain Testnet](https://testnet.bscscan.com/address/0x54a84BA0c2903252140262872ba5a618632CD6e2)
-* [Polygon Mumbai Testnet](https://mumbai.polygonscan.com/address/0x38b16B05E4ef4d23e9Cb851e32a42Ae24138d25E)
+* [Binance Smart Chain Testnet](https://testnet.bscscan.com/address/0x8F3BA92f85CBE029ad67232b70084bc054Cd943D)
+* [Polygon Mumbai Testnet](https://mumbai.polygonscan.com/address/0x0a574c6f4D15795c322a636C69f4a2dc95b72C97)
+
+Previous versions of the contracts:
+
+* [Binance Smart Chain Testnet](https://testnet.bscscan.com/address/0x6Fe4B44354b3D642B1eeF4a43Fa1f87a84Db87b4)
+* [Polygon Mumbai Testnet](https://mumbai.polygonscan.com/address/0xe946A89AC5025Bd47EBf498217ed18248455fDC2)

@@ -8,17 +8,16 @@ describe('Contract', function () {
   const contractId = 'cntr42'
   let owner
   let customer
-  let performer
+  let contractor
   let other
   const price = 42.12
   const priceInGwei = ethers.utils.parseEther(price.toString())
   const customerId = 'cstmr1'
-  const performerId = 'prfrmr1'
+  const contractorId = 'cntrctr1'
   const title = 'title'
-  const description = 'description'
 
   beforeEach(async function () {
-    ;[owner, customer, performer, other] = await ethers.getSigners()
+    ;[owner, customer, contractor, other] = await ethers.getSigners()
 
     Contract = await ethers.getContractFactory('Contract')
   })
@@ -27,22 +26,20 @@ describe('Contract', function () {
     _signer,
     _contractId,
     _customerAddress,
-    _performerAddress,
+    _contractorAddress,
     _priceInEth,
     _customerId,
-    _performerId,
-    _title,
-    _description
+    _contractorId,
+    _title
   ) => {
     contract = await Contract.connect(_signer).deploy(
       _contractId,
       _customerAddress,
-      _performerAddress,
+      _contractorAddress,
       ethers.utils.parseEther(_priceInEth.toString()),
       _customerId,
-      _performerId,
-      _title,
-      _description
+      _contractorId,
+      _title
     )
 
     return await contract.deployed()
@@ -71,23 +68,52 @@ describe('Contract', function () {
 
   describe('As owner', function () {
     describe('Deploy', function () {
+      it('Reverts when customer address is zero', async function () {
+        const tx = deployContract(
+          owner,
+          contractId,
+          ethers.constants.AddressZero,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+
+        await expectRevert(tx, 'Invalid address')
+      })
+
+      it('Reverts when contractor address is zero', async function () {
+        const tx = deployContract(
+          owner,
+          contractId,
+          customer.address,
+          ethers.constants.AddressZero,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+
+        await expectRevert(tx, 'Invalid address')
+      })
+
       it('Reverts when owner == customer', async function () {
         const tx = deployContract(
           owner,
           contractId,
           owner.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
 
-        await expectRevert(tx, 'Customer cannot deploy contract')
+        await expectRevert(tx, 'OwnerOnly()')
       })
 
-      it('Reverts when owner == performer', async function () {
+      it('Reverts when owner == contractor', async function () {
         const tx = deployContract(
           owner,
           contractId,
@@ -95,15 +121,14 @@ describe('Contract', function () {
           owner.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
 
-        await expectRevert(tx, 'Performer cannot deploy contract')
+        await expectRevert(tx, 'OwnerOnly()')
       })
 
-      it('Reverts when customer == performer', async function () {
+      it('Reverts when customer == contractor', async function () {
         const tx = deployContract(
           owner,
           contractId,
@@ -111,12 +136,11 @@ describe('Contract', function () {
           customer.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
 
-        await expectRevert(tx, 'Customer is equal to performer')
+        await expectRevert(tx, 'Customer is equal to contractor')
       })
 
       it('Reverts when price == 0', async function () {
@@ -124,15 +148,65 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           0,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
 
-        await expectRevert(tx, 'Price must be greater than zero')
+        await expectRevert(tx, 'Price is zero')
+      })
+
+      it('Reverts when contractId is empty', async function () {
+        const tx = deployContract(
+          owner,
+          '',
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+
+        await expectRevert(tx, 'ContractID is empty')
+      })
+
+      it('Reverts when customerId is empty', async function () {
+        const tx = deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          '',
+          contractorId,
+          title
+        )
+
+        await expectRevert(tx, 'CustomerID is empty')
+      })
+
+      it('Reverts when contractorId is empty', async function () {
+        const tx = deployContract(owner, contractId, customer.address, contractor.address, price, customerId, '', title)
+
+        await expectRevert(tx, 'ContractorID is empty')
+      })
+
+      it('Reverts when title is empty', async function () {
+        const tx = deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          ''
+        )
+
+        await expectRevert(tx, 'Title is empty')
       })
 
       it('Deploys successfully', async function () {
@@ -140,12 +214,11 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
 
         const contractAddress = c.address
@@ -156,7 +229,31 @@ describe('Contract', function () {
         expect(contractAddress).not.to.equal(undefined)
       })
 
-      xit('Emits event ContractCreated')
+      xit('Emits event ContractDeployed')
+    })
+
+    describe('Send ethers directly', function () {
+      it('Reverts because there is no fallback nor receive function', async function () {
+        const c = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+
+        const contractAddress = c.address
+
+        await expect(
+          owner.sendTransaction({
+            to: contractAddress,
+            value: ethers.utils.parseEther('1'), // 1 ether
+          })
+        ).to.be.reverted
+      })
     })
 
     describe('fund', function () {
@@ -165,17 +262,16 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(fundContractAs(owner, price), 'Available to customer only')
+        await expectRevert(fundContractAs(owner, price), 'CustomerOnly()')
       })
     })
 
@@ -185,17 +281,35 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(approveContractAs(owner), 'Available to customer only')
+        await expectRevert(approveContractAs(owner), 'CustomerOnly()')
+      })
+    })
+
+    describe('withdraw', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+      })
+
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(withdrawTokensAs(owner), 'ContractorOnly()')
       })
     })
 
@@ -205,12 +319,11 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
@@ -258,7 +371,7 @@ describe('Contract', function () {
           it('Returns true', async function () {
             await fundContractAs(customer, price)
             await approveContractAs(customer)
-            await withdrawTokensAs(performer)
+            await withdrawTokensAs(contractor)
 
             expect(await contract.connect(owner).isClosed()).to.eq(true)
           })
@@ -292,10 +405,10 @@ describe('Contract', function () {
         })
       })
 
-      describe('getPerformer', function () {
-        it('Returns performer address', async function () {
-          const result = await contract.connect(owner).getPerformer()
-          expect(result).to.eq(performer.address)
+      describe('getContractor', function () {
+        it('Returns contractor address', async function () {
+          const result = await contract.connect(owner).getContractor()
+          expect(result).to.eq(contractor.address)
         })
       })
 
@@ -320,10 +433,10 @@ describe('Contract', function () {
         })
       })
 
-      describe('getPerformerId', function () {
-        it('Returns contract performerId', async function () {
-          const result = await contract.connect(owner).getPerformerId()
-          expect(result).to.eq(performerId)
+      describe('getContractorId', function () {
+        it('Returns contract contractorId', async function () {
+          const result = await contract.connect(owner).getContractorId()
+          expect(result).to.eq(contractorId)
         })
       })
 
@@ -331,13 +444,6 @@ describe('Contract', function () {
         it('Returns contract title', async function () {
           const result = await contract.connect(owner).getTitle()
           expect(result).to.eq(title)
-        })
-      })
-
-      describe('getDescription', function () {
-        it('Returns contract description', async function () {
-          const result = await contract.connect(owner).getDescription()
-          expect(result).to.eq(description)
         })
       })
     })
@@ -350,16 +456,15 @@ describe('Contract', function () {
           customer,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
+          contractorId,
           title,
-          description,
           price
         )
 
-        await expectRevert(tx, 'Customer cannot deploy contract')
+        await expectRevert(tx, 'OwnerOnly()')
       })
     })
 
@@ -369,12 +474,11 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
+          contractorId,
           title,
-          description,
           price
         )
       })
@@ -390,19 +494,18 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
+          contractorId,
           title,
-          description,
           price
         )
       })
 
       describe('when not funded', async function () {
         it('Reverts because contract is not funded', async function () {
-          await expectRevert(approveContractAs(customer), 'Cannot be called at this time')
+          await expectRevert(approveContractAs(customer), 'TooEarly()')
         })
       })
 
@@ -413,18 +516,36 @@ describe('Contract', function () {
       })
     })
 
+    describe('withdraw', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+      })
+
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(withdrawTokensAs(customer), 'ContractorOnly()')
+      })
+    })
+
     describe('getters', function () {
       beforeEach(async function () {
         contract = await deployContract(
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
+          contractorId,
           title,
-          description,
           price
         )
       })
@@ -473,7 +594,7 @@ describe('Contract', function () {
           it('Returns true', async function () {
             await fundContractAs(customer, price)
             await approveContractAs(customer)
-            await withdrawTokensAs(performer)
+            await withdrawTokensAs(contractor)
 
             expect(await contract.connect(customer).isClosed()).to.eq(true)
           })
@@ -505,10 +626,10 @@ describe('Contract', function () {
         })
       })
 
-      describe('getPerformer', function () {
-        it('Returns performer address', async function () {
-          const result = await contract.connect(customer).getPerformer()
-          expect(result).to.eq(performer.address)
+      describe('getContractor', function () {
+        it('Returns contractor address', async function () {
+          const result = await contract.connect(customer).getContractor()
+          expect(result).to.eq(contractor.address)
         })
       })
 
@@ -533,10 +654,10 @@ describe('Contract', function () {
         })
       })
 
-      describe('getPerformerId', function () {
-        it('Returns contract performerId', async function () {
-          const result = await contract.connect(customer).getPerformerId()
-          expect(result).to.eq(performerId)
+      describe('getContractorId', function () {
+        it('Returns contract contractorId', async function () {
+          const result = await contract.connect(customer).getContractorId()
+          expect(result).to.eq(contractorId)
         })
       })
 
@@ -546,32 +667,24 @@ describe('Contract', function () {
           expect(result).to.eq(title)
         })
       })
-
-      describe('getDescription', function () {
-        it('Returns contract description', async function () {
-          const result = await contract.connect(customer).getDescription()
-          expect(result).to.eq(description)
-        })
-      })
     })
   })
 
-  describe('As performer', function () {
+  describe('As contractor', function () {
     describe('Deploy', function () {
       it('Reverts because restricted to owner', async function () {
         const tx = deployContract(
-          performer,
+          contractor,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
 
-        await expectRevert(tx, 'Performer cannot deploy contract')
+        await expectRevert(tx, 'OwnerOnly()')
       })
     })
 
@@ -581,17 +694,16 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(contract.connect(performer).fund(), 'Available to customer only')
+        await expectRevert(contract.connect(contractor).fund(), 'CustomerOnly()')
       })
     })
 
@@ -601,57 +713,55 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(contract.connect(performer).approve(), 'Available to customer only')
+        await expectRevert(contract.connect(contractor).approve(), 'CustomerOnly()')
       })
     })
 
-    describe('withdraw money from token', function () {
+    describe('withdraw', function () {
       beforeEach(async function () {
         contract = await deployContract(
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
       it('Reverts because contract is not approved', async function () {
         await fundContractAs(customer, price)
 
-        await expectRevert(withdrawTokensAs(performer), '')
+        await expectRevert(withdrawTokensAs(contractor), '')
       })
 
-      it('Transfers money from contract to performer', async function () {
+      it('Transfers money from contract to contractor', async function () {
         await fundContractAs(customer, price)
         await approveContractAs(customer)
 
         expect(await ethers.provider.getBalance(contract.address)).to.eq(priceInGwei)
-        const performerBalanceBefore = await ethers.provider.getBalance(performer.address)
-        const performerBalanceBeforeInEth = ethers.utils.formatEther(performerBalanceBefore.toString())
+        const contractorBalanceBefore = await ethers.provider.getBalance(contractor.address)
+        const contractorBalanceBeforeInEth = ethers.utils.formatEther(contractorBalanceBefore.toString())
 
-        await withdrawTokensAs(performer)
+        await withdrawTokensAs(contractor)
 
         expect(await ethers.provider.getBalance(contract.address)).to.eq(0)
 
         // NOTE: We should check not exact value, because of gas fee
-        const performerBalanceAfter = await ethers.provider.getBalance(performer.address)
-        const performerBalanceAfterInEth = ethers.utils.formatEther(performerBalanceAfter.toString())
-        const diff = performerBalanceAfterInEth - performerBalanceBeforeInEth
+        const contractorBalanceAfter = await ethers.provider.getBalance(contractor.address)
+        const contractorBalanceAfterInEth = ethers.utils.formatEther(contractorBalanceAfter.toString())
+        const diff = contractorBalanceAfterInEth - contractorBalanceBeforeInEth
 
         expect(diff).to.be.gt(parseFloat(price) - 2)
       })
@@ -663,19 +773,18 @@ describe('Contract', function () {
           owner,
           contractId,
           customer.address,
-          performer.address,
+          contractor.address,
           price,
           customerId,
-          performerId,
-          title,
-          description
+          contractorId,
+          title
         )
       })
 
       describe('isFunded', function () {
         describe('when contract is not funded', function () {
           it('Returns false', async function () {
-            expect(await contract.connect(performer).isFunded()).to.eq(false)
+            expect(await contract.connect(contractor).isFunded()).to.eq(false)
           })
         })
 
@@ -683,7 +792,7 @@ describe('Contract', function () {
           it('Returns true', async function () {
             await fundContractAs(customer, price)
 
-            expect(await contract.connect(performer).isFunded()).to.eq(true)
+            expect(await contract.connect(contractor).isFunded()).to.eq(true)
           })
         })
       })
@@ -691,7 +800,7 @@ describe('Contract', function () {
       describe('isApproved', function () {
         describe('when contract is not approved', function () {
           it('Returns false', async function () {
-            expect(await contract.connect(performer).isApproved()).to.eq(false)
+            expect(await contract.connect(contractor).isApproved()).to.eq(false)
           })
         })
 
@@ -700,7 +809,7 @@ describe('Contract', function () {
             await fundContractAs(customer, price)
             await approveContractAs(customer)
 
-            expect(await contract.connect(performer).isApproved()).to.eq(true)
+            expect(await contract.connect(contractor).isApproved()).to.eq(true)
           })
         })
       })
@@ -708,7 +817,7 @@ describe('Contract', function () {
       describe('isClosed', function () {
         describe('when contract not closed', function () {
           it('Returns false', async function () {
-            expect(await contract.connect(performer).isClosed()).to.eq(false)
+            expect(await contract.connect(contractor).isClosed()).to.eq(false)
           })
         })
 
@@ -716,9 +825,9 @@ describe('Contract', function () {
           it('Returns true', async function () {
             await fundContractAs(customer, price)
             await approveContractAs(customer)
-            await withdrawTokensAs(performer)
+            await withdrawTokensAs(contractor)
 
-            expect(await contract.connect(performer).isClosed()).to.eq(true)
+            expect(await contract.connect(contractor).isClosed()).to.eq(true)
           })
         })
       })
@@ -726,7 +835,7 @@ describe('Contract', function () {
       describe('getBalance', function () {
         describe('when contract is not funded', function () {
           it('Returns zero', async function () {
-            const result = await contract.connect(performer).getBalance()
+            const result = await contract.connect(contractor).getBalance()
             expect(result).to.eq(0)
           })
         })
@@ -735,7 +844,7 @@ describe('Contract', function () {
           it('Returns contract balance', async function () {
             await fundContractAs(customer, price)
 
-            const result = await contract.connect(performer).getBalance()
+            const result = await contract.connect(contractor).getBalance()
             expect(result).to.eq(priceInGwei)
           })
         })
@@ -743,57 +852,50 @@ describe('Contract', function () {
 
       describe('getCustomer', function () {
         it('Returns customer address', async function () {
-          const result = await contract.connect(performer).getCustomer()
+          const result = await contract.connect(contractor).getCustomer()
           expect(result).to.eq(customer.address)
         })
       })
 
-      describe('getPerformer', function () {
-        it('Returns performer address', async function () {
-          const result = await contract.connect(performer).getPerformer()
-          expect(result).to.eq(performer.address)
+      describe('getContractor', function () {
+        it('Returns contractor address', async function () {
+          const result = await contract.connect(contractor).getContractor()
+          expect(result).to.eq(contractor.address)
         })
       })
 
       describe('getContractId', function () {
         it('Returns contract ID', async function () {
-          const result = await contract.connect(performer).getContractId()
+          const result = await contract.connect(contractor).getContractId()
           expect(result).to.eq(contractId)
         })
       })
 
       describe('getPrice', function () {
         it('Returns contract price', async function () {
-          const result = await contract.connect(performer).getPrice()
+          const result = await contract.connect(contractor).getPrice()
           expect(result).to.eq(priceInGwei)
         })
       })
 
       describe('getCustomerId', function () {
         it('Returns contract customerId', async function () {
-          const result = await contract.connect(performer).getCustomerId()
+          const result = await contract.connect(contractor).getCustomerId()
           expect(result).to.eq(customerId)
         })
       })
 
-      describe('getPerformerId', function () {
-        it('Returns contract performerId', async function () {
-          const result = await contract.connect(performer).getPerformerId()
-          expect(result).to.eq(performerId)
+      describe('getContractorId', function () {
+        it('Returns contract contractorId', async function () {
+          const result = await contract.connect(contractor).getContractorId()
+          expect(result).to.eq(contractorId)
         })
       })
 
       describe('getTitle', function () {
         it('Returns contract title', async function () {
-          const result = await contract.connect(performer).getTitle()
+          const result = await contract.connect(contractor).getTitle()
           expect(result).to.eq(title)
-        })
-      })
-
-      describe('getDescription', function () {
-        it('Returns contract description', async function () {
-          const result = await contract.connect(performer).getDescription()
-          expect(result).to.eq(description)
         })
       })
     })
@@ -805,96 +907,95 @@ describe('Contract', function () {
         owner,
         contractId,
         customer.address,
-        performer.address,
+        contractor.address,
         price,
         customerId,
-        performerId,
-        title,
-        description
+        contractorId,
+        title
       )
     })
 
     describe('fund', function () {
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(contract.connect(other).fund(), 'Available to customer only')
+        await expectRevert(contract.connect(other).fund(), 'CustomerOnly()')
       })
     })
 
     describe('approve', function () {
       it('Reverts because restricted to customer', async function () {
-        await expectRevert(contract.connect(other).approve(), 'Available to customer only')
+        await expectRevert(contract.connect(other).approve(), 'CustomerOnly()')
+      })
+    })
+
+    describe('withdraw', function () {
+      it('Reverts because restricted to performer', async function () {
+        await expectRevert(contract.connect(other).withdraw(), 'ContractorOnly()')
       })
     })
 
     describe('isFunded', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).isFunded(), 'Authorized only')
+        await expectRevert(contract.connect(other).isFunded(), 'Unauthorized()')
       })
     })
 
     describe('isApproved', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).isApproved(), 'Authorized only')
+        await expectRevert(contract.connect(other).isApproved(), 'Unauthorized()')
       })
     })
 
     describe('isClosed', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).isClosed(), 'Authorized only')
+        await expectRevert(contract.connect(other).isClosed(), 'Unauthorized()')
       })
     })
 
     describe('getBalance', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getBalance(), 'Authorized only')
+        await expectRevert(contract.connect(other).getBalance(), 'Unauthorized()')
       })
     })
 
     describe('getCustomer', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getCustomer(), 'Authorized only')
+        await expectRevert(contract.connect(other).getCustomer(), 'Unauthorized()')
       })
     })
 
-    describe('getPerformer', function () {
+    describe('getContractor', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getPerformer(), 'Authorized only')
+        await expectRevert(contract.connect(other).getContractor(), 'Unauthorized()')
       })
     })
 
     describe('getContractId', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getContractId(), 'Authorized only')
+        await expectRevert(contract.connect(other).getContractId(), 'Unauthorized()')
       })
     })
 
     describe('getPrice', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getPrice(), 'Authorized only')
+        await expectRevert(contract.connect(other).getPrice(), 'Unauthorized()')
       })
     })
 
     describe('getCustomerId', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getCustomerId(), 'Authorized only')
+        await expectRevert(contract.connect(other).getCustomerId(), 'Unauthorized()')
       })
     })
 
-    describe('getPerformerId', function () {
+    describe('getContractorId', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getPerformerId(), 'Authorized only')
+        await expectRevert(contract.connect(other).getContractorId(), 'Unauthorized()')
       })
     })
 
     describe('getTitle', function () {
       it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getTitle(), 'Authorized only')
-      })
-    })
-
-    describe('getDescription', function () {
-      it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getDescription(), 'Authorized only')
+        await expectRevert(contract.connect(other).getTitle(), 'Unauthorized()')
       })
     })
   })

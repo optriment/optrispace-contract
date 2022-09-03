@@ -13,6 +13,12 @@ contract ContractFactory {
         string contractId
     );
 
+    /// Sender not authorized for this operation
+    error Unauthorized();
+
+    /// Available to owner only
+    error OwnerOnly();
+
     address private immutable owner;
 
     address[] private admins;
@@ -24,7 +30,10 @@ contract ContractFactory {
     mapping(string => bool) private contractExists;
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only for owner");
+        if (msg.sender != owner) {
+            revert OwnerOnly();
+        }
+
         _;
     }
 
@@ -44,25 +53,23 @@ contract ContractFactory {
 
     function createContract(
         string memory contractId,
-        address performer,
+        address contractor,
         uint256 price,
         string memory customerId,
-        string memory performerId,
-        string memory title,
-        string memory description
+        string memory contractorId,
+        string memory title
     ) external returns (address) {
-        require(bytes(contractId).length > 0, "ContractID cannot be empty");
-        require(!contractExists[contractId], "Contract already exists");
+        require(bytes(contractId).length > 0, "ContractID is empty");
+        require(!contractExists[contractId], "Contract exists");
 
         Contract c = new Contract(
             contractId,
             msg.sender, // customer
-            performer,
+            contractor,
             price,
             customerId,
-            performerId,
-            title,
-            description
+            contractorId,
+            title
         );
 
         contracts[contractId] = c;
@@ -77,34 +84,29 @@ contract ContractFactory {
         address _address,
         uint256 _balance,
         address _customer,
-        address _performer,
+        address _contractor,
         string memory _contractId,
         uint256 _price,
         string memory _customerId,
-        string memory _performerId,
-        string memory _title,
-        string memory _description
+        string memory _contractorId,
+        string memory _title
     ) {
         require(contractExists[contractId], "Contract does not exist");
 
         Contract c = contracts[contractId];
 
-        require(
-            owner == msg.sender || c.getCustomer() == msg.sender || c.getPerformer() == msg.sender,
-            "Authorized only"
-        );
+        if (msg.sender != owner && msg.sender != c.getCustomer() && msg.sender != c.getContractor()) {
+            revert Unauthorized();
+        }
 
-        return (
-            address(c),
-            c.getBalance(),
-            c.getCustomer(),
-            c.getPerformer(),
-            c.getContractId(),
-            c.getPrice(),
-            c.getCustomerId(),
-            c.getPerformerId(),
-            c.getTitle(),
-            c.getDescription()
-        );
+        _address = address(c);
+        _balance = c.getBalance();
+        _customer = c.getCustomer();
+        _contractor = c.getContractor();
+        _contractId = c.getContractId();
+        _price = c.getPrice();
+        _customerId = c.getCustomerId();
+        _contractorId = c.getContractorId();
+        _title = c.getTitle();
     }
 }
