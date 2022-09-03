@@ -9,6 +9,7 @@ help: # Show this help
 
 setup: # Setup project
 	@${NPM} install
+	@${NPX} husky install
 
 compile: # Compile contracts
 	@${NPM_RUN} compile
