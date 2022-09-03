@@ -2,6 +2,10 @@
 
 ![OptriSpace](./assets/optrispace.png)
 
+[![Tests](https://github.com/optriment/optrispace-contract/actions/workflows/tests.yml/badge.svg)](https://github.com/optriment/optrispace-contract/actions/workflows/tests.yml)
+[![Lint](https://github.com/optriment/optrispace-contract/actions/workflows/lint.yml/badge.svg)](https://github.com/optriment/optrispace-contract/actions/workflows/lint.yml)
+[![Spell](https://github.com/optriment/optrispace-contract/actions/workflows/spell.yml/badge.svg)](https://github.com/optriment/optrispace-contract/actions/workflows/spell.yml)
+
 ## Getting Started
 
 Visit [https://optrispace.com/](https://optrispace.com/) to learn more about us.
