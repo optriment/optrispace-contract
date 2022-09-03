@@ -27,7 +27,7 @@
   },
   "keywords": ["web3", "blockchain", "smart contract", "optrispace"],
   "author": "Alexander Kadyrov <gruz0.mail@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/optriment/optrispace-contract/issues"
   },
