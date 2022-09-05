@@ -29,7 +29,7 @@ fix: # Run linters and try to fix issues
 	@${NPM_RUN} fix
 
 .PHONY: coverage
-coverage: # Generate code coverage
+coverage: clean # Generate code coverage
 	@${NPM_RUN} coverage
 
 open_coverage:

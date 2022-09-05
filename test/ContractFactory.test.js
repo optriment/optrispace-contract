@@ -27,7 +27,7 @@ describe('ContractFactory', function () {
 
   describe('Deploy', function () {
     it('Has address', async function () {
-      expect(contractFactoryAddress).not.to.equal(0x0)
+      expect(contractFactoryAddress).not.to.equal(ethers.constants.AddressZero)
       expect(contractFactoryAddress).not.to.equal('')
       expect(contractFactoryAddress).not.to.equal(null)
       expect(contractFactoryAddress).not.to.equal(undefined)
@@ -100,6 +100,7 @@ describe('ContractFactory', function () {
         contractCustomerId,
         contractContractorId,
         contractTitle,
+        contractState,
       ] = await contractFactory.connect(customer).getContractById(contractId)
 
       expect(contractAddress).not.to.eq('')
@@ -111,6 +112,7 @@ describe('ContractFactory', function () {
       expect(contractCustomerId).to.eq(customerId)
       expect(contractContractorId).to.eq(contractorId)
       expect(contractTitle).to.eq(title)
+      expect(contractState).to.eq('Created')
     })
   })
 
@@ -169,6 +171,9 @@ describe('ContractFactory', function () {
       const Contract = await ethers.getContractFactory('Contract')
       const contract = Contract.attach(contractAddress)
 
+      const acceptTx = await contract.connect(contractor).accept()
+      await acceptTx.wait()
+
       const fundTx = await contract.connect(customer).fund({ value: priceInGwei })
       await fundTx.wait()
     })
@@ -193,6 +198,7 @@ describe('ContractFactory', function () {
           contractCustomerId,
           contractContractorId,
           contractTitle,
+          contractState,
         ] = await contractFactory.connect(owner).getContractById(contractId)
 
         expect(contractAddress).not.to.eq('')
@@ -204,6 +210,7 @@ describe('ContractFactory', function () {
         expect(contractCustomerId).to.eq(customerId)
         expect(contractContractorId).to.eq(contractorId)
         expect(contractTitle).to.eq(title)
+        expect(contractState).to.eq('Funded')
       })
     })
 
@@ -227,6 +234,7 @@ describe('ContractFactory', function () {
           contractCustomerId,
           contractContractorId,
           contractTitle,
+          contractState,
         ] = await contractFactory.connect(customer).getContractById(contractId)
 
         expect(contractAddress).not.to.eq('')
@@ -238,6 +246,7 @@ describe('ContractFactory', function () {
         expect(contractCustomerId).to.eq(customerId)
         expect(contractContractorId).to.eq(contractorId)
         expect(contractTitle).to.eq(title)
+        expect(contractState).to.eq('Funded')
       })
     })
 
@@ -261,6 +270,7 @@ describe('ContractFactory', function () {
           contractCustomerId,
           contractContractorId,
           contractTitle,
+          contractState,
         ] = await contractFactory.connect(contractor).getContractById(contractId)
 
         expect(contractAddress).not.to.eq('')
@@ -272,6 +282,7 @@ describe('ContractFactory', function () {
         expect(contractCustomerId).to.eq(customerId)
         expect(contractContractorId).to.eq(contractorId)
         expect(contractTitle).to.eq(title)
+        expect(contractState).to.eq('Funded')
       })
     })
 

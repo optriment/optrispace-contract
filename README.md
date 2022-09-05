@@ -25,7 +25,7 @@ Please see our [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Authors
 
-* Alexander Kadyrov ([@gruz0](https://github.com/gruz0))
+- Alexander Kadyrov ([@gruz0](https://github.com/gruz0))
 
 ## Networks
 
@@ -33,10 +33,17 @@ Owner: `0xE5a26Cc0eC6F20f20B793262e6eB16fe1eDbe2d8`
 
 Current versions of the contracts:
 
-* [Binance Smart Chain Testnet](https://testnet.bscscan.com/address/0x8F3BA92f85CBE029ad67232b70084bc054Cd943D)
-* [Polygon Mumbai Testnet](https://mumbai.polygonscan.com/address/0x0a574c6f4D15795c322a636C69f4a2dc95b72C97)
+- [Binance Smart Chain Testnet](https://testnet.bscscan.com/address/0x54e3616858eC0Bf9F5131c28541F0cad48bdC673)
+- [Polygon Mumbai Testnet](https://testnet.bscscan.com/address/0xCB15e696091b07aFEc31D55C209Ab256b529dEd6)
 
-Previous versions of the contracts:
+Previous versions of the contracts (from newest to oldest):
 
-* [Binance Smart Chain Testnet](https://testnet.bscscan.com/address/0x6Fe4B44354b3D642B1eeF4a43Fa1f87a84Db87b4)
-* [Polygon Mumbai Testnet](https://mumbai.polygonscan.com/address/0xe946A89AC5025Bd47EBf498217ed18248455fDC2)
+**Binance Smart Chain Testnet**
+
+- [0x8F3BA92f85CBE029ad67232b70084bc054Cd943D](https://testnet.bscscan.com/address/0x8F3BA92f85CBE029ad67232b70084bc054Cd943D)
+- [0x6Fe4B44354b3D642B1eeF4a43Fa1f87a84Db87b4](https://testnet.bscscan.com/address/0x6Fe4B44354b3D642B1eeF4a43Fa1f87a84Db87b4)
+
+**Polygon Mumbai Testnet**
+
+- [0x0a574c6f4D15795c322a636C69f4a2dc95b72C97](https://mumbai.polygonscan.com/address/0x0a574c6f4D15795c322a636C69f4a2dc95b72C97)
+- [0xe946A89AC5025Bd47EBf498217ed18248455fDC2](https://mumbai.polygonscan.com/address/0xe946A89AC5025Bd47EBf498217ed18248455fDC2)
