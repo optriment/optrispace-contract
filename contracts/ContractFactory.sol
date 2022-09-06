@@ -8,10 +8,7 @@ contract ContractFactory {
     event AdminAdded(address newAdmin);
 
     // Logs out created contract record
-    event ContractDeployed(
-        address contractAddress,
-        string contractId
-    );
+    event ContractDeployed(address contractAddress, string contractId);
 
     /// Sender not authorized for this operation
     error Unauthorized();
@@ -80,17 +77,22 @@ contract ContractFactory {
         return address(c);
     }
 
-    function getContractById(string memory contractId) external view returns (
-        address _address,
-        uint256 _balance,
-        address _customer,
-        address _contractor,
-        string memory _contractId,
-        uint256 _price,
-        string memory _customerId,
-        string memory _contractorId,
-        string memory _title
-    ) {
+    function getContractById(string memory contractId)
+        external
+        view
+        returns (
+            address _address,
+            uint256 _balance,
+            address _customer,
+            address _contractor,
+            string memory _contractId,
+            uint256 _price,
+            string memory _customerId,
+            string memory _contractorId,
+            string memory _title,
+            string memory _state
+        )
+    {
         require(contractExists[contractId], "Contract does not exist");
 
         Contract c = contracts[contractId];
@@ -108,5 +110,6 @@ contract ContractFactory {
         _customerId = c.getCustomerId();
         _contractorId = c.getContractorId();
         _title = c.getTitle();
+        _state = c.getState();
     }
 }

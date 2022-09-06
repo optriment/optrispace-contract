@@ -3,20 +3,22 @@ pragma solidity 0.8.13;
 
 contract Contract {
     // Logs out created contract record
-    event ContractDeployed(
-        address contractAddress,
-        string contractId,
-        address customer
-    );
+    event ContractCreated(address contractAddress, string contractId, address customer);
+
+    // Logs out accepted contract record
+    event ContractAccepted(string contractId);
 
     // Logs out funded contract record
-    event ContractFunded(
-        string contractId,
-        uint256 amount
-    );
+    event ContractFunded(string contractId, uint256 amount);
+
+    // Logs out approval requested contract record
+    event ContractApprovalRequested(string contractId, uint256 timestamp);
 
     // Logs out approved contract record
     event ContractApproved(string contractId);
+
+    // Logs out closed contract record
+    event ContractClosed(string contractId);
 
     address private owner = msg.sender;
     address private customer;
@@ -26,6 +28,9 @@ contract Contract {
     string private contractId;
     string private title;
     uint256 private price;
+
+    // key – State index, value - Timestamp
+    mapping(uint8 => uint256) private timestamps;
 
     /// Sender not authorized for this operation
     error Unauthorized();
@@ -42,7 +47,14 @@ contract Contract {
     /// Function called too early
     error TooEarly();
 
-    enum States { Deployed, Funded, Approved, Closed }
+    enum States {
+        Created,
+        Accepted,
+        Funded,
+        ApprovalRequested,
+        Approved,
+        Closed
+    }
     States private state;
 
     modifier inState(States _state) {
@@ -55,7 +67,9 @@ contract Contract {
 
     // NOTE: https://docs.soliditylang.org/en/v0.8.12/common-patterns.html#example
     function nextState() internal {
-        state = States(uint(state) + 1);
+        // solhint-disable-next-line not-rely-on-time
+        timestamps[uint8(state) + 1] = block.timestamp;
+        state = States(uint256(state) + 1);
     }
 
     // This modifier goes to the next stage after the function is done.
@@ -134,73 +148,108 @@ contract Contract {
         contractId = _contractId;
         customerId = _customerId;
         contractorId = _contractorId;
-        title =_title;
+        title = _title;
 
-        state = States.Deployed;
+        state = States.Created;
+        // solhint-disable-next-line not-rely-on-time
+        timestamps[0] = block.timestamp;
 
-        emit ContractDeployed(
-            address(this),
-            contractId,
-            customer
-        );
+        emit ContractCreated(address(this), contractId, customer);
     }
 
-    function fund() external payable onlyCustomer inState(States.Deployed) transitionNext {
+    function accept() external onlyContractor inState(States.Created) transitionNext {
+        emit ContractAccepted(contractId);
+    }
+
+    function fund() external payable onlyCustomer inState(States.Accepted) transitionNext {
         require(msg.value >= price, "Amount is too small");
 
         emit ContractFunded(contractId, price);
     }
 
-    function approve() external onlyCustomer inState(States.Funded) transitionNext {
+    function requestApproval() external onlyContractor inState(States.Funded) transitionNext {
+        // solhint-disable-next-line not-rely-on-time
+        emit ContractApprovalRequested(contractId, block.timestamp);
+    }
+
+    function approve() external onlyCustomer inState(States.ApprovalRequested) transitionNext {
         emit ContractApproved(contractId);
     }
 
     function withdraw() external onlyContractor inState(States.Approved) transitionNext {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = contractor.call{value: address(this).balance}("");
         require(success, "Withdraw failed");
+
+        emit ContractClosed(contractId);
     }
 
-    function isFunded() external authorized view returns (bool) {
+    function isAccepted() external view authorized returns (bool) {
+        return state == States.Accepted;
+    }
+
+    function isFunded() external view authorized returns (bool) {
         return address(this).balance >= price;
     }
 
-    function isApproved() external authorized view returns (bool) {
+    function isApprovalRequested() external view authorized returns (bool) {
+        return state == States.ApprovalRequested;
+    }
+
+    function isApproved() external view authorized returns (bool) {
         return state == States.Approved;
     }
 
-    function isClosed() external authorized view returns (bool) {
+    function isClosed() external view authorized returns (bool) {
         return state == States.Closed;
     }
 
-    function getBalance() external authorized view returns (uint256) {
+    // TODO: Add tests
+    function getState() external view authorized returns (string memory) {
+        if (state == States.Created) return "Created";
+        if (state == States.Accepted) return "Accepted";
+        if (state == States.Funded) return "Funded";
+        if (state == States.ApprovalRequested) return "ApprovalRequested";
+        if (state == States.Approved) return "Approved";
+        if (state == States.Closed) return "Closed";
+
+        return "";
+    }
+
+    // TODO: Add tests
+    function getStateTimestamp(uint8 index) external view authorized returns (uint256) {
+        return timestamps[index];
+    }
+
+    function getBalance() external view authorized returns (uint256) {
         return address(this).balance;
     }
 
-    function getCustomer() external authorized view returns (address) {
+    function getCustomer() external view authorized returns (address) {
         return customer;
     }
 
-    function getContractor() external authorized view returns (address) {
+    function getContractor() external view authorized returns (address) {
         return contractor;
     }
 
-    function getContractId() external authorized view returns (string memory) {
+    function getContractId() external view authorized returns (string memory) {
         return contractId;
     }
 
-    function getPrice() external authorized view returns (uint256) {
+    function getPrice() external view authorized returns (uint256) {
         return price;
     }
 
-    function getCustomerId() external authorized view returns (string memory) {
+    function getCustomerId() external view authorized returns (string memory) {
         return customerId;
     }
 
-    function getContractorId() external authorized view returns (string memory) {
+    function getContractorId() external view authorized returns (string memory) {
         return contractorId;
     }
 
-    function getTitle() external authorized view returns (string memory) {
+    function getTitle() external view authorized returns (string memory) {
         return title;
     }
 }

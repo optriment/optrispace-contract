@@ -1,5 +1,6 @@
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
+const { time } = require('@nomicfoundation/hardhat-network-helpers')
 const { expectRevert, expectEvent } = require('./helpers')
 
 describe('Contract', function () {
@@ -45,8 +46,22 @@ describe('Contract', function () {
     return await contract.deployed()
   }
 
+  const acceptContractAs = async (_signer) => {
+    const tx = await contract.connect(_signer).accept()
+    await tx.wait()
+
+    return tx
+  }
+
   const fundContractAs = async (_signer, _amountInEth) => {
     const tx = await contract.connect(_signer).fund({ value: ethers.utils.parseEther(_amountInEth.toString()) })
+    await tx.wait()
+
+    return tx
+  }
+
+  const requestApprovalAs = async (_signer) => {
+    const tx = await contract.connect(_signer).requestApproval()
     await tx.wait()
 
     return tx
@@ -223,13 +238,19 @@ describe('Contract', function () {
 
         const contractAddress = c.address
 
-        expect(contractAddress).not.to.equal(0x0)
+        expect(contractAddress).not.to.equal(ethers.constants.AddressZero)
         expect(contractAddress).not.to.equal('')
         expect(contractAddress).not.to.equal(null)
         expect(contractAddress).not.to.equal(undefined)
+
+        const _contractId = await Contract.attach(contractAddress).connect(owner).getContractId()
+        expect(_contractId).to.eq(contractId)
+
+        expect(await contract.connect(owner).getState()).to.eq('Created')
+        expect(await contract.connect(owner).getStateTimestamp(0)).to.be.above(0)
       })
 
-      xit('Emits event ContractDeployed')
+      xit('Emits event ContractCreated')
     })
 
     describe('Send ethers directly', function () {
@@ -256,6 +277,25 @@ describe('Contract', function () {
       })
     })
 
+    describe('accept', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+      })
+
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(acceptContractAs(owner, price), 'ContractorOnly()')
+      })
+    })
+
     describe('fund', function () {
       beforeEach(async function () {
         contract = await deployContract(
@@ -272,6 +312,25 @@ describe('Contract', function () {
 
       it('Reverts because restricted to customer', async function () {
         await expectRevert(fundContractAs(owner, price), 'CustomerOnly()')
+      })
+    })
+
+    describe('requestApproval', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+      })
+
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(requestApprovalAs(owner), 'ContractorOnly()')
       })
     })
 
@@ -327,6 +386,22 @@ describe('Contract', function () {
         )
       })
 
+      describe('isAccepted', function () {
+        describe('when contract is not accepted', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(owner).isAccepted()).to.eq(false)
+          })
+        })
+
+        describe('when contract is accepted', function () {
+          it('Returns true', async function () {
+            await acceptContractAs(contractor, price)
+
+            expect(await contract.connect(owner).isAccepted()).to.eq(true)
+          })
+        })
+      })
+
       describe('isFunded', function () {
         describe('when contract is not funded', function () {
           it('Returns false', async function () {
@@ -336,9 +411,28 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
 
             expect(await contract.connect(owner).isFunded()).to.eq(true)
+          })
+        })
+      })
+
+      describe('isApprovalRequested', function () {
+        describe('when contract approval is not requested', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(owner).isApprovalRequested()).to.eq(false)
+          })
+        })
+
+        describe('when contract approval is requested', function () {
+          it('Returns true', async function () {
+            await acceptContractAs(contractor)
+            await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
+
+            expect(await contract.connect(owner).isApprovalRequested()).to.eq(true)
           })
         })
       })
@@ -352,7 +446,9 @@ describe('Contract', function () {
 
         describe('when contract is approved', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
             await approveContractAs(customer)
 
             expect(await contract.connect(owner).isApproved()).to.eq(true)
@@ -369,7 +465,9 @@ describe('Contract', function () {
 
         describe('when contract is closed', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
             await approveContractAs(customer)
             await withdrawTokensAs(contractor)
 
@@ -388,6 +486,7 @@ describe('Contract', function () {
 
         describe('when funded', function () {
           beforeEach(async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
           })
 
@@ -468,6 +567,26 @@ describe('Contract', function () {
       })
     })
 
+    describe('accept', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title,
+          price
+        )
+      })
+
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(acceptContractAs(customer), 'ContractorOnly()')
+      })
+    })
+
     describe('fund', function () {
       beforeEach(async function () {
         contract = await deployContract(
@@ -483,8 +602,46 @@ describe('Contract', function () {
         )
       })
 
-      it('Emits event ContractFunded', async function () {
-        await expectEvent(fundContractAs(customer, price), contract, 'ContractFunded', [contractId, priceInGwei])
+      describe('when not accepted', async function () {
+        it('Reverts because contract is not accepted', async function () {
+          await expectRevert(fundContractAs(customer, price), 'TooEarly()')
+        })
+      })
+
+      describe('when accepted', async function () {
+        it('Emits event ContractFunded', async function () {
+          await acceptContractAs(contractor)
+
+          await expectEvent(fundContractAs(customer, price), contract, 'ContractFunded', [contractId, priceInGwei])
+        })
+
+        it('Transitions to Funded', async function () {
+          await acceptContractAs(contractor)
+          await fundContractAs(customer, price)
+
+          expect(await contract.connect(customer).getState()).to.eq('Funded')
+          expect(await contract.connect(customer).getStateTimestamp(2)).to.be.above(0)
+        })
+      })
+    })
+
+    describe('requestApproval', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title,
+          price
+        )
+      })
+
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(requestApprovalAs(customer), 'ContractorOnly()')
       })
     })
 
@@ -510,9 +667,21 @@ describe('Contract', function () {
       })
 
       it('Emits event ContractApproved', async function () {
+        await acceptContractAs(contractor)
         await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
 
         await expectEvent(approveContractAs(customer), contract, 'ContractApproved', [contractId])
+      })
+
+      it('Transitions to Approved', async function () {
+        await acceptContractAs(contractor)
+        await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
+        await approveContractAs(customer)
+
+        expect(await contract.connect(customer).getState()).to.eq('Approved')
+        expect(await contract.connect(customer).getStateTimestamp(4)).to.be.above(0)
       })
     })
 
@@ -550,6 +719,22 @@ describe('Contract', function () {
         )
       })
 
+      describe('isAccepted', function () {
+        describe('when contract is not accepted', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(customer).isAccepted()).to.eq(false)
+          })
+        })
+
+        describe('when contract is accepted', function () {
+          it('Returns true', async function () {
+            await acceptContractAs(contractor, price)
+
+            expect(await contract.connect(customer).isAccepted()).to.eq(true)
+          })
+        })
+      })
+
       describe('isFunded', function () {
         describe('when contract is not funded', function () {
           it('Returns false', async function () {
@@ -559,9 +744,28 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
 
             expect(await contract.connect(customer).isFunded()).to.eq(true)
+          })
+        })
+      })
+
+      describe('isApprovalRequested', function () {
+        describe('when contract approval is not requested', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(customer).isApprovalRequested()).to.eq(false)
+          })
+        })
+
+        describe('when contract approval is requested', function () {
+          it('Returns true', async function () {
+            await acceptContractAs(contractor)
+            await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
+
+            expect(await contract.connect(customer).isApprovalRequested()).to.eq(true)
           })
         })
       })
@@ -575,7 +779,9 @@ describe('Contract', function () {
 
         describe('when contract is approved', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
             await approveContractAs(customer)
 
             expect(await contract.connect(customer).isApproved()).to.eq(true)
@@ -592,7 +798,9 @@ describe('Contract', function () {
 
         describe('when contract is closed', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
             await approveContractAs(customer)
             await withdrawTokensAs(contractor)
 
@@ -611,6 +819,7 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns contract balance', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
 
             const result = await contract.connect(customer).getBalance()
@@ -688,6 +897,32 @@ describe('Contract', function () {
       })
     })
 
+    describe('accept', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+      })
+
+      it('Emits event ContractAccepted', async function () {
+        await expectEvent(acceptContractAs(contractor), contract, 'ContractAccepted', [contractId])
+      })
+
+      it('Transitions to Accepted', async function () {
+        await acceptContractAs(contractor)
+
+        expect(await contract.connect(contractor).getState()).to.eq('Accepted')
+        expect(await contract.connect(contractor).getStateTimestamp(1)).to.be.above(0)
+      })
+    })
+
     describe('fund', function () {
       beforeEach(async function () {
         contract = await deployContract(
@@ -704,6 +939,40 @@ describe('Contract', function () {
 
       it('Reverts because restricted to customer', async function () {
         await expectRevert(contract.connect(contractor).fund(), 'CustomerOnly()')
+      })
+    })
+
+    describe('requestApproval', function () {
+      beforeEach(async function () {
+        contract = await deployContract(
+          owner,
+          contractId,
+          customer.address,
+          contractor.address,
+          price,
+          customerId,
+          contractorId,
+          title
+        )
+      })
+
+      it('Emits event ContractApprovalRequested', async function () {
+        await acceptContractAs(contractor)
+        await fundContractAs(customer, price)
+
+        const timestamp = +new Date()
+        await time.setNextBlockTimestamp(timestamp)
+
+        await expectEvent(requestApprovalAs(contractor), contract, 'ContractApprovalRequested', [contractId, timestamp])
+      })
+
+      it('Transitions to ApprovalRequested', async function () {
+        await acceptContractAs(contractor)
+        await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
+
+        expect(await contract.connect(contractor).getState()).to.eq('ApprovalRequested')
+        expect(await contract.connect(contractor).getStateTimestamp(3)).to.be.above(0)
       })
     })
 
@@ -741,13 +1010,17 @@ describe('Contract', function () {
       })
 
       it('Reverts because contract is not approved', async function () {
+        await acceptContractAs(contractor)
         await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
 
         await expectRevert(withdrawTokensAs(contractor), '')
       })
 
       it('Transfers money from contract to contractor', async function () {
+        await acceptContractAs(contractor)
         await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
         await approveContractAs(customer)
 
         expect(await ethers.provider.getBalance(contract.address)).to.eq(priceInGwei)
@@ -765,6 +1038,26 @@ describe('Contract', function () {
 
         expect(diff).to.be.gt(parseFloat(price) - 2)
       })
+
+      it('Emits event ContractClosed', async function () {
+        await acceptContractAs(contractor)
+        await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
+        await approveContractAs(customer)
+
+        await expectEvent(withdrawTokensAs(contractor), contract, 'ContractClosed', [contractId])
+      })
+
+      it('Transitions to Closed', async function () {
+        await acceptContractAs(contractor)
+        await fundContractAs(customer, price)
+        await requestApprovalAs(contractor)
+        await approveContractAs(customer)
+        await withdrawTokensAs(contractor)
+
+        expect(await contract.connect(contractor).getState()).to.eq('Closed')
+        expect(await contract.connect(contractor).getStateTimestamp(5)).to.be.above(0)
+      })
     })
 
     describe('getters', function () {
@@ -781,6 +1074,22 @@ describe('Contract', function () {
         )
       })
 
+      describe('isAccepted', function () {
+        describe('when contract is not accepted', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(contractor).isAccepted()).to.eq(false)
+          })
+        })
+
+        describe('when contract is accepted', function () {
+          it('Returns true', async function () {
+            await acceptContractAs(contractor, price)
+
+            expect(await contract.connect(contractor).isAccepted()).to.eq(true)
+          })
+        })
+      })
+
       describe('isFunded', function () {
         describe('when contract is not funded', function () {
           it('Returns false', async function () {
@@ -790,9 +1099,28 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
 
             expect(await contract.connect(contractor).isFunded()).to.eq(true)
+          })
+        })
+      })
+
+      describe('isApprovalRequested', function () {
+        describe('when contract approval is not requested', function () {
+          it('Returns false', async function () {
+            expect(await contract.connect(contractor).isApprovalRequested()).to.eq(false)
+          })
+        })
+
+        describe('when contract approval is requested', function () {
+          it('Returns true', async function () {
+            await acceptContractAs(contractor)
+            await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
+
+            expect(await contract.connect(contractor).isApprovalRequested()).to.eq(true)
           })
         })
       })
@@ -806,7 +1134,9 @@ describe('Contract', function () {
 
         describe('when contract is approved', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
             await approveContractAs(customer)
 
             expect(await contract.connect(contractor).isApproved()).to.eq(true)
@@ -823,7 +1153,9 @@ describe('Contract', function () {
 
         describe('when contract is closed', function () {
           it('Returns true', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
+            await requestApprovalAs(contractor)
             await approveContractAs(customer)
             await withdrawTokensAs(contractor)
 
@@ -842,6 +1174,7 @@ describe('Contract', function () {
 
         describe('when contract is funded', function () {
           it('Returns contract balance', async function () {
+            await acceptContractAs(contractor)
             await fundContractAs(customer, price)
 
             const result = await contract.connect(contractor).getBalance()
@@ -915,6 +1248,12 @@ describe('Contract', function () {
       )
     })
 
+    describe('accept', function () {
+      it('Reverts because restricted to contractor', async function () {
+        await expectRevert(contract.connect(other).accept(), 'ContractorOnly()')
+      })
+    })
+
     describe('fund', function () {
       it('Reverts because restricted to customer', async function () {
         await expectRevert(contract.connect(other).fund(), 'CustomerOnly()')
@@ -933,6 +1272,12 @@ describe('Contract', function () {
       })
     })
 
+    describe('isAccepted', function () {
+      it('Reverts because restricted to participants', async function () {
+        await expectRevert(contract.connect(other).isAccepted(), 'Unauthorized()')
+      })
+    })
+
     describe('isFunded', function () {
       it('Reverts because restricted to participants', async function () {
         await expectRevert(contract.connect(other).isFunded(), 'Unauthorized()')
@@ -948,6 +1293,18 @@ describe('Contract', function () {
     describe('isClosed', function () {
       it('Reverts because restricted to participants', async function () {
         await expectRevert(contract.connect(other).isClosed(), 'Unauthorized()')
+      })
+    })
+
+    describe('getState', function () {
+      it('Reverts because restricted to participants', async function () {
+        await expectRevert(contract.connect(other).getState(), 'Unauthorized()')
+      })
+    })
+
+    describe('getStateTimestamp', function () {
+      it('Reverts because restricted to participants', async function () {
+        await expectRevert(contract.connect(other).getStateTimestamp(0), 'Unauthorized()')
       })
     })
 
