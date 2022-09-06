@@ -8,6 +8,7 @@ jobs:
 
     env:
       REPORT_GAS: true
+      COINMARKETCAP_API_KEY: ${{secrets.COINMARKETCAP_API_KEY}}
 
     steps:
       - uses: actions/checkout@v3
