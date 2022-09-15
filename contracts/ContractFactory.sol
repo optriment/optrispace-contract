@@ -6,49 +6,19 @@ import "./Contract.sol";
 contract ContractFactory {
     string public constant version = "1.0.0";
 
-    // Logs out added admin record
-    event AdminAdded(address newAdmin);
-
     // Logs out created contract record
     event ContractDeployed(address contractAddress, string contractId);
 
     /// Sender not authorized for this operation
     error Unauthorized();
 
-    /// Available to owner only
-    error OwnerOnly();
-
-    address private immutable owner;
-
-    address[] private admins;
+    address public immutable owner = msg.sender;
 
     // key – Contract ID
     mapping(string => Contract) private contracts;
 
     // key – Contract ID
     mapping(string => bool) private contractExists;
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) {
-            revert OwnerOnly();
-        }
-
-        _;
-    }
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    function addAdmin(address newAdmin) external onlyOwner {
-        admins.push(newAdmin);
-
-        emit AdminAdded(newAdmin);
-    }
-
-    function getAdmins() external view onlyOwner returns (address[] memory) {
-        return admins;
-    }
 
     function createContract(
         string memory contractId,

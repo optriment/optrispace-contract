@@ -24,6 +24,12 @@ describe('ContractFactory', function () {
     contractFactoryAddress = c.address
   })
 
+  describe('Owner', function () {
+    it('Returns deployer address', async function () {
+      expect(await contractFactory.owner()).to.equal(owner.address)
+    })
+  })
+
   describe('Version', function () {
     it('Returns actual version', async function () {
       expect(await contractFactory.version()).to.equal('1.0.0')
@@ -116,49 +122,6 @@ describe('ContractFactory', function () {
       expect(contractCustomerId).to.eq(customerId)
       expect(contractContractorId).to.eq(contractorId)
       expect(contractState).to.eq('Created')
-    })
-  })
-
-  describe('addAdmin', function () {
-    describe('As owner', function () {
-      it('Emits event AdminAdded', async function () {
-        const tx = contractFactory.connect(owner).addAdmin(customer.address)
-
-        await expectEvent(tx, contractFactory, 'AdminAdded', [customer.address])
-      })
-    })
-
-    describe('As other', function () {
-      it('Reverts', async function () {
-        const tx = contractFactory.connect(customer).addAdmin(customer.address)
-
-        await expectRevert(tx, 'OwnerOnly()')
-      })
-    })
-  })
-
-  describe('getAdmins', function () {
-    describe('As owner', function () {
-      it('Returns no admins', async function () {
-        const admins = await contractFactory.connect(owner).getAdmins()
-        expect(admins).to.be.length(0)
-      })
-
-      it('Contains added admin', async function () {
-        const addAdminTx = await contractFactory.connect(owner).addAdmin(customer.address)
-        await addAdminTx.wait()
-
-        const admins = await contractFactory.connect(owner).getAdmins()
-        expect(admins).to.include(customer.address.toString())
-      })
-    })
-
-    describe('As other', function () {
-      it('Reverts', async function () {
-        const tx = contractFactory.connect(customer).getAdmins()
-
-        await expectRevert(tx, 'OwnerOnly()')
-      })
     })
   })
 
