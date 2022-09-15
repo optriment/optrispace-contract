@@ -53,8 +53,7 @@ contract ContractFactory {
         address contractor,
         uint256 price,
         string memory customerId,
-        string memory contractorId,
-        string memory title
+        string memory contractorId
     ) external returns (address) {
         require(bytes(contractId).length > 0, "ContractID is empty");
         require(!contractExists[contractId], "Contract exists");
@@ -65,8 +64,7 @@ contract ContractFactory {
             contractor,
             price,
             customerId,
-            contractorId,
-            title
+            contractorId
         );
 
         contracts[contractId] = c;
@@ -89,7 +87,6 @@ contract ContractFactory {
             uint256 _price,
             string memory _customerId,
             string memory _contractorId,
-            string memory _title,
             string memory _state
         )
     {
@@ -109,7 +106,6 @@ contract ContractFactory {
         _price = c.getPrice();
         _customerId = c.getCustomerId();
         _contractorId = c.getContractorId();
-        _title = c.getTitle();
         _state = c.getState();
     }
 }

@@ -26,7 +26,6 @@ contract Contract {
     string private customerId;
     string private contractorId;
     string private contractId;
-    string private title;
     uint256 private price;
 
     // key – State index, value - Timestamp
@@ -108,10 +107,9 @@ contract Contract {
         address _contractor,
         uint256 _price,
         string memory _customerId,
-        string memory _contractorId,
-        string memory _title
+        string memory _contractorId
     ) {
-        create(_contractId, _customer, _contractor, _price, _customerId, _contractorId, _title);
+        create(_contractId, _customer, _contractor, _price, _customerId, _contractorId);
     }
 
     function create(
@@ -120,8 +118,7 @@ contract Contract {
         address _contractor,
         uint256 _price,
         string memory _customerId,
-        string memory _contractorId,
-        string memory _title
+        string memory _contractorId
     ) private {
         require(msg.sender != address(0) && _customer != address(0) && _contractor != address(0), "Invalid address");
 
@@ -134,11 +131,13 @@ contract Contract {
         require(_price != 0, "Price is zero");
 
         require(bytes(_contractId).length > 0, "ContractID is empty");
-
-        // TODO: Do we need to store this information in Blockchain?
         require(bytes(_customerId).length > 0, "CustomerID is empty");
         require(bytes(_contractorId).length > 0, "ContractorID is empty");
-        require(bytes(_title).length > 0, "Title is empty");
+
+        require(
+            keccak256(abi.encodePacked(_customerId)) != keccak256(abi.encodePacked(_contractorId)),
+            "CustomerID is equal to ContractorID"
+        );
 
         customer = _customer;
         contractor = payable(_contractor);
@@ -148,7 +147,6 @@ contract Contract {
         contractId = _contractId;
         customerId = _customerId;
         contractorId = _contractorId;
-        title = _title;
 
         state = States.Created;
         // solhint-disable-next-line not-rely-on-time
@@ -247,9 +245,5 @@ contract Contract {
 
     function getContractorId() external view authorized returns (string memory) {
         return contractorId;
-    }
-
-    function getTitle() external view authorized returns (string memory) {
-        return title;
     }
 }
