@@ -2,7 +2,7 @@
 pragma solidity 0.8.13;
 
 contract Contract {
-    string public constant version = "1.0.0";
+    string public constant VERSION = "1.0.0";
 
     // Logs out created contract record
     event ContractCreated(address contractAddress, string contractId, address customer);
@@ -128,7 +128,7 @@ contract Contract {
             revert OwnerOnly();
         }
 
-        require(_customer != _contractor, "Customer is equal to contractor");
+        require(_customer != _contractor, "Customer == Contractor");
 
         require(_price != 0, "Price is zero");
 
@@ -138,7 +138,7 @@ contract Contract {
 
         require(
             keccak256(abi.encodePacked(_customerId)) != keccak256(abi.encodePacked(_contractorId)),
-            "CustomerID is equal to ContractorID"
+            "CustomerID == ContractorID"
         );
 
         customer = _customer;

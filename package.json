@@ -15,7 +15,7 @@
     "lint": "npm run lint:es && npm run lint:js && npm run lint:sol && npx prettier --check .",
     "lint:es": "npx eslint '**/*.js'",
     "lint:js": "prettier test/**/*.js scripts/**/*.js --check",
-    "lint:sol": "solhint -f table contracts/**/*.sol",
+    "lint:sol": "solhint -f stylish contracts/**/*.sol -w 0",
     "fix": "npm run fix:es && npm run fix:js && npm run fix:sol && npx prettier -w .",
     "fix:es": "npx eslint '**/*.js' --fix",
     "fix:js": "prettier test/**/*.js scripts/**/*.js --write",
