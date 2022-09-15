@@ -7,8 +7,8 @@ contract Contract {
     // Logs out created contract record
     event ContractCreated(address contractAddress, string contractId, address customer);
 
-    // Logs out accepted contract record
-    event ContractAccepted(string contractId);
+    // Logs out signed contract record
+    event ContractSigned(string contractId);
 
     // Logs out funded contract record
     event ContractFunded(string contractId, uint256 amount);
@@ -50,7 +50,7 @@ contract Contract {
 
     enum States {
         Created,
-        Accepted,
+        Signed,
         Funded,
         ApprovalRequested,
         Approved,
@@ -157,11 +157,11 @@ contract Contract {
         emit ContractCreated(address(this), contractId, customer);
     }
 
-    function accept() external onlyContractor inState(States.Created) transitionNext {
-        emit ContractAccepted(contractId);
+    function sign() external onlyContractor inState(States.Created) transitionNext {
+        emit ContractSigned(contractId);
     }
 
-    function fund() external payable onlyCustomer inState(States.Accepted) transitionNext {
+    function fund() external payable onlyCustomer inState(States.Signed) transitionNext {
         require(msg.value >= price, "Amount is too small");
 
         emit ContractFunded(contractId, price);
@@ -184,8 +184,8 @@ contract Contract {
         emit ContractClosed(contractId);
     }
 
-    function isAccepted() external view authorized returns (bool) {
-        return state == States.Accepted;
+    function isSigned() external view authorized returns (bool) {
+        return state == States.Signed;
     }
 
     function isFunded() external view authorized returns (bool) {
@@ -207,7 +207,7 @@ contract Contract {
     // TODO: Add tests
     function getState() external view authorized returns (string memory) {
         if (state == States.Created) return "Created";
-        if (state == States.Accepted) return "Accepted";
+        if (state == States.Signed) return "Signed";
         if (state == States.Funded) return "Funded";
         if (state == States.ApprovalRequested) return "ApprovalRequested";
         if (state == States.Approved) return "Approved";
