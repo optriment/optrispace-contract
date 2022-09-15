@@ -15,7 +15,6 @@ describe('Contract', function () {
   const priceInGwei = ethers.utils.parseEther(price.toString())
   const customerId = 'cstmr1'
   const contractorId = 'cntrctr1'
-  const title = 'title'
 
   beforeEach(async function () {
     ;[owner, customer, contractor, other] = await ethers.getSigners()
@@ -30,8 +29,7 @@ describe('Contract', function () {
     _contractorAddress,
     _priceInEth,
     _customerId,
-    _contractorId,
-    _title
+    _contractorId
   ) => {
     contract = await Contract.connect(_signer).deploy(
       _contractId,
@@ -39,8 +37,7 @@ describe('Contract', function () {
       _contractorAddress,
       ethers.utils.parseEther(_priceInEth.toString()),
       _customerId,
-      _contractorId,
-      _title
+      _contractorId
     )
 
     return await contract.deployed()
@@ -91,8 +88,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
 
         await expectRevert(tx, 'Invalid address')
@@ -106,39 +102,20 @@ describe('Contract', function () {
           ethers.constants.AddressZero,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
 
         await expectRevert(tx, 'Invalid address')
       })
 
       it('Reverts when owner == customer', async function () {
-        const tx = deployContract(
-          owner,
-          contractId,
-          owner.address,
-          contractor.address,
-          price,
-          customerId,
-          contractorId,
-          title
-        )
+        const tx = deployContract(owner, contractId, owner.address, contractor.address, price, customerId, contractorId)
 
         await expectRevert(tx, 'OwnerOnly()')
       })
 
       it('Reverts when owner == contractor', async function () {
-        const tx = deployContract(
-          owner,
-          contractId,
-          customer.address,
-          owner.address,
-          price,
-          customerId,
-          contractorId,
-          title
-        )
+        const tx = deployContract(owner, contractId, customer.address, owner.address, price, customerId, contractorId)
 
         await expectRevert(tx, 'OwnerOnly()')
       })
@@ -151,77 +128,40 @@ describe('Contract', function () {
           customer.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
 
         await expectRevert(tx, 'Customer is equal to contractor')
       })
 
       it('Reverts when price == 0', async function () {
-        const tx = deployContract(
-          owner,
-          contractId,
-          customer.address,
-          contractor.address,
-          0,
-          customerId,
-          contractorId,
-          title
-        )
+        const tx = deployContract(owner, contractId, customer.address, contractor.address, 0, customerId, contractorId)
 
         await expectRevert(tx, 'Price is zero')
       })
 
       it('Reverts when contractId is empty', async function () {
-        const tx = deployContract(
-          owner,
-          '',
-          customer.address,
-          contractor.address,
-          price,
-          customerId,
-          contractorId,
-          title
-        )
+        const tx = deployContract(owner, '', customer.address, contractor.address, price, customerId, contractorId)
 
         await expectRevert(tx, 'ContractID is empty')
       })
 
       it('Reverts when customerId is empty', async function () {
-        const tx = deployContract(
-          owner,
-          contractId,
-          customer.address,
-          contractor.address,
-          price,
-          '',
-          contractorId,
-          title
-        )
+        const tx = deployContract(owner, contractId, customer.address, contractor.address, price, '', contractorId)
 
         await expectRevert(tx, 'CustomerID is empty')
       })
 
       it('Reverts when contractorId is empty', async function () {
-        const tx = deployContract(owner, contractId, customer.address, contractor.address, price, customerId, '', title)
+        const tx = deployContract(owner, contractId, customer.address, contractor.address, price, customerId, '')
 
         await expectRevert(tx, 'ContractorID is empty')
       })
 
-      it('Reverts when title is empty', async function () {
-        const tx = deployContract(
-          owner,
-          contractId,
-          customer.address,
-          contractor.address,
-          price,
-          customerId,
-          contractorId,
-          ''
-        )
+      it('Reverts when customerId is equal to contractorId', async function () {
+        const tx = deployContract(owner, contractId, customer.address, contractor.address, price, 'qwe', 'qwe')
 
-        await expectRevert(tx, 'Title is empty')
+        await expectRevert(tx, 'CustomerID is equal to ContractorID')
       })
 
       it('Deploys successfully', async function () {
@@ -232,8 +172,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
 
         const contractAddress = c.address
@@ -262,8 +201,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
 
         const contractAddress = c.address
@@ -286,8 +224,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -305,8 +242,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -324,8 +260,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -343,8 +278,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -362,8 +296,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -381,8 +314,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -538,13 +470,6 @@ describe('Contract', function () {
           expect(result).to.eq(contractorId)
         })
       })
-
-      describe('getTitle', function () {
-        it('Returns contract title', async function () {
-          const result = await contract.connect(owner).getTitle()
-          expect(result).to.eq(title)
-        })
-      })
     })
   })
 
@@ -559,7 +484,6 @@ describe('Contract', function () {
           price,
           customerId,
           contractorId,
-          title,
           price
         )
 
@@ -577,7 +501,6 @@ describe('Contract', function () {
           price,
           customerId,
           contractorId,
-          title,
           price
         )
       })
@@ -597,7 +520,6 @@ describe('Contract', function () {
           price,
           customerId,
           contractorId,
-          title,
           price
         )
       })
@@ -635,7 +557,6 @@ describe('Contract', function () {
           price,
           customerId,
           contractorId,
-          title,
           price
         )
       })
@@ -655,7 +576,6 @@ describe('Contract', function () {
           price,
           customerId,
           contractorId,
-          title,
           price
         )
       })
@@ -694,8 +614,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -714,7 +633,6 @@ describe('Contract', function () {
           price,
           customerId,
           contractorId,
-          title,
           price
         )
       })
@@ -869,13 +787,6 @@ describe('Contract', function () {
           expect(result).to.eq(contractorId)
         })
       })
-
-      describe('getTitle', function () {
-        it('Returns contract title', async function () {
-          const result = await contract.connect(customer).getTitle()
-          expect(result).to.eq(title)
-        })
-      })
     })
   })
 
@@ -889,8 +800,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
 
         await expectRevert(tx, 'OwnerOnly()')
@@ -906,8 +816,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -932,8 +841,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -951,8 +859,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -985,8 +892,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -1004,8 +910,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -1069,8 +974,7 @@ describe('Contract', function () {
           contractor.address,
           price,
           customerId,
-          contractorId,
-          title
+          contractorId
         )
       })
 
@@ -1224,13 +1128,6 @@ describe('Contract', function () {
           expect(result).to.eq(contractorId)
         })
       })
-
-      describe('getTitle', function () {
-        it('Returns contract title', async function () {
-          const result = await contract.connect(contractor).getTitle()
-          expect(result).to.eq(title)
-        })
-      })
     })
   })
 
@@ -1243,8 +1140,7 @@ describe('Contract', function () {
         contractor.address,
         price,
         customerId,
-        contractorId,
-        title
+        contractorId
       )
     })
 
@@ -1347,12 +1243,6 @@ describe('Contract', function () {
     describe('getContractorId', function () {
       it('Reverts because restricted to participants', async function () {
         await expectRevert(contract.connect(other).getContractorId(), 'Unauthorized()')
-      })
-    })
-
-    describe('getTitle', function () {
-      it('Reverts because restricted to participants', async function () {
-        await expectRevert(contract.connect(other).getTitle(), 'Unauthorized()')
       })
     })
   })

@@ -14,7 +14,6 @@ describe('ContractFactory', function () {
   const priceInGwei = ethers.utils.parseEther(price.toString())
   const customerId = 'cstmr1'
   const contractorId = 'cntrctr1'
-  const title = 'title'
 
   beforeEach(async function () {
     ;[owner, customer, contractor, other] = await ethers.getSigners()
@@ -38,7 +37,7 @@ describe('ContractFactory', function () {
     it('Reverts when customer == contractor', async function () {
       const tx = contractFactory
         .connect(customer)
-        .createContract(contractId, customer.address, priceInGwei, customerId, contractorId, title)
+        .createContract(contractId, customer.address, priceInGwei, customerId, contractorId)
 
       await expectRevert(tx, 'Customer is equal to contractor')
     })
@@ -46,7 +45,7 @@ describe('ContractFactory', function () {
     it('Reverts when ContractID is empty', async function () {
       const tx = contractFactory
         .connect(customer)
-        .createContract('', contractor.address, priceInGwei, customerId, contractorId, title)
+        .createContract('', contractor.address, priceInGwei, customerId, contractorId)
 
       await expectRevert(tx, 'ContractID is empty')
     })
@@ -54,12 +53,12 @@ describe('ContractFactory', function () {
     it('Reverts when contract already exists', async function () {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId, title)
+        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId)
       await createContractTx.wait()
 
       const tx = contractFactory
         .connect(customer)
-        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId, title)
+        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId)
 
       await expectRevert(tx, 'Contract exists')
     })
@@ -67,7 +66,7 @@ describe('ContractFactory', function () {
     it('Reverts when price is equal to zero', async function () {
       const tx = contractFactory
         .connect(customer)
-        .createContract(contractId, contractor.address, 0, customerId, contractorId, title)
+        .createContract(contractId, contractor.address, 0, customerId, contractorId)
 
       await expectRevert(tx, 'Price is zero')
     })
@@ -75,7 +74,7 @@ describe('ContractFactory', function () {
     it('Emits event ContractDeployed', async function () {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId, title)
+        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId)
 
       await createContractTx.wait()
 
@@ -87,7 +86,7 @@ describe('ContractFactory', function () {
     it('Creates contract', async function () {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId, title)
+        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId)
       await createContractTx.wait()
 
       const [
@@ -99,7 +98,6 @@ describe('ContractFactory', function () {
         contractPrice,
         contractCustomerId,
         contractContractorId,
-        contractTitle,
         contractState,
       ] = await contractFactory.connect(customer).getContractById(contractId)
 
@@ -111,7 +109,6 @@ describe('ContractFactory', function () {
       expect(contractPrice).to.eq(priceInGwei)
       expect(contractCustomerId).to.eq(customerId)
       expect(contractContractorId).to.eq(contractorId)
-      expect(contractTitle).to.eq(title)
       expect(contractState).to.eq('Created')
     })
   })
@@ -163,7 +160,7 @@ describe('ContractFactory', function () {
     beforeEach(async () => {
       const createContractTx = await contractFactory
         .connect(customer)
-        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId, title)
+        .createContract(contractId, contractor.address, priceInGwei, customerId, contractorId)
       await createContractTx.wait()
 
       const [contractAddress] = await contractFactory.getContractById(contractId)
@@ -197,7 +194,6 @@ describe('ContractFactory', function () {
           contractPrice,
           contractCustomerId,
           contractContractorId,
-          contractTitle,
           contractState,
         ] = await contractFactory.connect(owner).getContractById(contractId)
 
@@ -209,7 +205,6 @@ describe('ContractFactory', function () {
         expect(contractPrice).to.eq(priceInGwei)
         expect(contractCustomerId).to.eq(customerId)
         expect(contractContractorId).to.eq(contractorId)
-        expect(contractTitle).to.eq(title)
         expect(contractState).to.eq('Funded')
       })
     })
@@ -233,7 +228,6 @@ describe('ContractFactory', function () {
           contractPrice,
           contractCustomerId,
           contractContractorId,
-          contractTitle,
           contractState,
         ] = await contractFactory.connect(customer).getContractById(contractId)
 
@@ -245,7 +239,6 @@ describe('ContractFactory', function () {
         expect(contractPrice).to.eq(priceInGwei)
         expect(contractCustomerId).to.eq(customerId)
         expect(contractContractorId).to.eq(contractorId)
-        expect(contractTitle).to.eq(title)
         expect(contractState).to.eq('Funded')
       })
     })
@@ -269,7 +262,6 @@ describe('ContractFactory', function () {
           contractPrice,
           contractCustomerId,
           contractContractorId,
-          contractTitle,
           contractState,
         ] = await contractFactory.connect(contractor).getContractById(contractId)
 
@@ -281,7 +273,6 @@ describe('ContractFactory', function () {
         expect(contractPrice).to.eq(priceInGwei)
         expect(contractCustomerId).to.eq(customerId)
         expect(contractContractorId).to.eq(contractorId)
-        expect(contractTitle).to.eq(title)
         expect(contractState).to.eq('Funded')
       })
     })
