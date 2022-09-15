@@ -30,9 +30,9 @@ describe('ContractFactory', function () {
     })
   })
 
-  describe('Version', function () {
+  describe('VERSION', function () {
     it('Returns actual version', async function () {
-      expect(await contractFactory.version()).to.equal('1.0.0')
+      expect(await contractFactory.VERSION()).to.equal('1.0.0')
     })
   })
 
@@ -51,7 +51,7 @@ describe('ContractFactory', function () {
         .connect(customer)
         .createContract(contractId, customer.address, priceInGwei, customerId, contractorId)
 
-      await expectRevert(tx, 'Customer is equal to contractor')
+      await expectRevert(tx, 'Customer == Contractor')
     })
 
     it('Reverts when ContractID is empty', async function () {

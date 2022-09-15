@@ -78,7 +78,7 @@ describe('Contract', function () {
     return tx
   }
 
-  describe('Version', function () {
+  describe('VERSION', function () {
     beforeEach(async function () {
       contract = await deployContract(
         owner,
@@ -92,7 +92,7 @@ describe('Contract', function () {
     })
 
     it('Returns actual version', async function () {
-      expect(await contract.version()).to.equal('1.0.0')
+      expect(await contract.VERSION()).to.equal('1.0.0')
     })
   })
 
@@ -149,7 +149,7 @@ describe('Contract', function () {
           contractorId
         )
 
-        await expectRevert(tx, 'Customer is equal to contractor')
+        await expectRevert(tx, 'Customer == Contractor')
       })
 
       it('Reverts when price == 0', async function () {
@@ -179,7 +179,7 @@ describe('Contract', function () {
       it('Reverts when customerId is equal to contractorId', async function () {
         const tx = deployContract(owner, contractId, customer.address, contractor.address, price, 'qwe', 'qwe')
 
-        await expectRevert(tx, 'CustomerID is equal to ContractorID')
+        await expectRevert(tx, 'CustomerID == ContractorID')
       })
 
       it('Deploys successfully', async function () {

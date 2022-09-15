@@ -4,7 +4,7 @@ pragma solidity 0.8.13;
 import "./Contract.sol";
 
 contract ContractFactory {
-    string public constant version = "1.0.0";
+    string public constant VERSION = "1.0.0";
 
     // Logs out created contract record
     event ContractDeployed(address contractAddress, string contractId);
