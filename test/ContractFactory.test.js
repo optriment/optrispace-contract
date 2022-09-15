@@ -137,8 +137,8 @@ describe('ContractFactory', function () {
       const Contract = await ethers.getContractFactory('Contract')
       const contract = Contract.attach(contractAddress)
 
-      const acceptTx = await contract.connect(contractor).accept()
-      await acceptTx.wait()
+      const signTx = await contract.connect(contractor).sign()
+      await signTx.wait()
 
       const fundTx = await contract.connect(customer).fund({ value: priceInGwei })
       await fundTx.wait()
