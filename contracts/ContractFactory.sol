@@ -4,6 +4,8 @@ pragma solidity 0.8.13;
 import "./Contract.sol";
 
 contract ContractFactory {
+    string public constant version = "1.0.0";
+
     // Logs out added admin record
     event AdminAdded(address newAdmin);
 

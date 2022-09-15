@@ -24,6 +24,12 @@ describe('ContractFactory', function () {
     contractFactoryAddress = c.address
   })
 
+  describe('Version', function () {
+    it('Returns actual version', async function () {
+      expect(await contractFactory.version()).to.equal('1.0.0')
+    })
+  })
+
   describe('Deploy', function () {
     it('Has address', async function () {
       expect(contractFactoryAddress).not.to.equal(ethers.constants.AddressZero)

@@ -2,6 +2,8 @@
 pragma solidity 0.8.13;
 
 contract Contract {
+    string public constant version = "1.0.0";
+
     // Logs out created contract record
     event ContractCreated(address contractAddress, string contractId, address customer);
 

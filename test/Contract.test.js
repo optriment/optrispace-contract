@@ -78,6 +78,24 @@ describe('Contract', function () {
     return tx
   }
 
+  describe('Version', function () {
+    beforeEach(async function () {
+      contract = await deployContract(
+        owner,
+        contractId,
+        customer.address,
+        contractor.address,
+        price,
+        customerId,
+        contractorId
+      )
+    })
+
+    it('Returns actual version', async function () {
+      expect(await contract.version()).to.equal('1.0.0')
+    })
+  })
+
   describe('As owner', function () {
     describe('Deploy', function () {
       it('Reverts when customer address is zero', async function () {
