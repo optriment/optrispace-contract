@@ -13,9 +13,6 @@ contract Contract {
     // Logs out funded contract record
     event ContractFunded(string contractId, uint256 amount);
 
-    // Logs out approval requested contract record
-    event ContractApprovalRequested(string contractId, uint256 timestamp);
-
     // Logs out approved contract record
     event ContractApproved(string contractId);
 
@@ -52,7 +49,6 @@ contract Contract {
         Created,
         Signed,
         Funded,
-        ApprovalRequested,
         Approved,
         Closed
     }
@@ -167,12 +163,7 @@ contract Contract {
         emit ContractFunded(contractId, price);
     }
 
-    function requestApproval() external onlyContractor inState(States.Funded) transitionNext {
-        // solhint-disable-next-line not-rely-on-time
-        emit ContractApprovalRequested(contractId, block.timestamp);
-    }
-
-    function approve() external onlyCustomer inState(States.ApprovalRequested) transitionNext {
+    function approve() external onlyCustomer inState(States.Funded) transitionNext {
         emit ContractApproved(contractId);
     }
 
@@ -192,10 +183,6 @@ contract Contract {
         return address(this).balance >= price;
     }
 
-    function isApprovalRequested() external view authorized returns (bool) {
-        return state == States.ApprovalRequested;
-    }
-
     function isApproved() external view authorized returns (bool) {
         return state == States.Approved;
     }
@@ -209,7 +196,6 @@ contract Contract {
         if (state == States.Created) return "Created";
         if (state == States.Signed) return "Signed";
         if (state == States.Funded) return "Funded";
-        if (state == States.ApprovalRequested) return "ApprovalRequested";
         if (state == States.Approved) return "Approved";
         if (state == States.Closed) return "Closed";
 
