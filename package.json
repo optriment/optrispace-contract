@@ -9,7 +9,6 @@
     "deploy-localhost": "npx hardhat run scripts/deploy.js --network localhost",
     "deploy-bsc-testnet": "npx hardhat run scripts/deploy.js --network bsc-testnet",
     "deploy-mumbai-testnet": "npx hardhat run scripts/deploy.js --network mumbai-testnet",
-    "debug-contract": "npx hardhat run scripts/debug-contract.js --network bsc-testnet",
     "test": "hardhat test test/*.test.js --bail",
     "coverage": "npx hardhat coverage --network hardhat",
     "lint": "npm run lint:es && npm run lint:js && npm run lint:sol && npx prettier --check .",
