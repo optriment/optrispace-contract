@@ -18,8 +18,8 @@ describe('ContractFactory', function () {
   beforeEach(async function () {
     ;[owner, customer, contractor, other] = await ethers.getSigners()
 
-    const ContractFactory = await ethers.getContractFactory('ContractFactory')
-    contractFactory = await ContractFactory.deploy()
+    contractFactory = await ethers.deployContract('ContractFactory')
+
     const c = await contractFactory.deployed()
     contractFactoryAddress = c.address
   })
